@@ -139,7 +139,7 @@ export default function CabShift() {
   const monthDates = Array.from({ length: daysInMonth }, (_, i) => new Date(summaryYear, summaryMonth, i + 1));
   const monthStatTotal = (castId, key) => monthDates.reduce((sum, d) => sum + (Number(getStat(castId, d.toDateString())[key]) || 0), 0);
   const weekStatTotal = (castId, key) => dates.reduce((sum, d) => sum + (Number(getStat(castId, d.toDateString())[key]) || 0), 0);
-  const STAT_ITEMS = [
+  const [salesView, setSalesView] = useState("week"); // "week" | "month"
     { key: "douhan", label: "本指名", color: "#FF6B6B", emoji: "💖" },
     { key: "shimei", label: "姫指名", color: "#FFC93C", emoji: "⭐" },
     { key: "drink", label: "雑費", color: "#5DC9E2", emoji: "💰" },
@@ -289,65 +289,130 @@ export default function CabShift() {
 
         {tab === "sales" && (
           <div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <button onClick={() => setWeekOffset((w) => w - 1)} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}>← 前週</button>
-              <div style={{ fontWeight: 700, fontSize: 15 }}>{formatDate(dates[0])} 〜 {formatDate(dates[6])}</div>
-              <button onClick={() => setWeekOffset((w) => w + 1)} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}>次週 →</button>
-            </div>
-            <div style={{ background: "linear-gradient(135deg, #FFB6D5, #FF8FAB)", borderRadius: 14, padding: "20px 24px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div>
-                <div style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>週間売上合計</div>
-                <div style={{ color: "#fff", fontSize: 28, fontWeight: 800, marginTop: 4 }}>{formatYen(weekSales)}</div>
-              </div>
-              <div style={{ fontSize: 36 }}>💎</div>
-            </div>
-            <div style={{ background: "#fff", borderRadius: 14, padding: 16, marginBottom: 16 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: "#5C3344", marginBottom: 12 }}>キャスト週間成績</div>
-              {[...cast].sort((a, b) => totalStat(b.id, "shimei") - totalStat(a.id, "shimei")).map((member) => (
-                <div key={member.id} style={{ display: "flex", alignItems: "center", gap: 10, background: "#FFF5F8", borderRadius: 10, padding: "10px 14px", marginBottom: 8 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: "50%", background: `linear-gradient(135deg, ${rankColor(member.rank)}, #FF8FAB)`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 13 }}>{member.name[0]}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13 }}>{member.name}</div>
-                    <div style={{ fontSize: 10, color: rankColor(member.rank), fontWeight: 700 }}>{member.rank}</div>
-                  </div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    {[{ key: "douhan", label: "本指名", color: "#FF6B6B" }, { key: "shimei", label: "姫指名", color: "#FFC93C" }, { key: "drink", label: "雑費", color: "#5DC9E2" }].map(({ key, label, color }) => (
-                      <div key={key} style={{ textAlign: "center", background: `${color}22`, borderRadius: 8, padding: "4px 10px" }}>
-                        <div style={{ fontSize: 16, fontWeight: 800, color }}>{totalStat(member.id, key)}</div>
-                        <div style={{ fontSize: 9, color: "#D4789F" }}>{label}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+            {/* Toggle */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+              {[{ id: "week", label: "週間" }, { id: "month", label: "月間" }].map((v) => (
+                <button key={v.id} onClick={() => setSalesView(v.id)} style={{ flex: 1, padding: "10px 0", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: "pointer", background: salesView === v.id ? "linear-gradient(135deg, #FFB6D5, #FF8FAB)" : "#fff", color: salesView === v.id ? "#fff" : "#D4789F", boxShadow: salesView === v.id ? "0 2px 8px rgba(255,107,157,0.3)" : "none" }}>
+                  {v.label}
+                </button>
               ))}
             </div>
-            {dates.map((d, i) => {
-              const dateStr = d.toDateString();
-              const isWeekend = i >= 5;
-              const isToday = d.toDateString() === new Date().toDateString();
-              const dayData = sales[dateStr] || {};
-              const working = cast.filter((c) => getShift(c.id, dateStr).status !== "off").length;
-              return (
-                <div key={i} style={{ background: "#fff", borderRadius: 14, padding: "14px 18px", marginBottom: 10, border: isToday ? "2px solid #FFC93C" : "2px solid transparent" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{ minWidth: 48 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: isWeekend ? "#FF4D8D" : "#D4789F" }}>{DAYS[i]}</div>
-                      <div style={{ fontSize: 18, fontWeight: 800, color: isToday ? "#FFC93C" : isWeekend ? "#FF4D8D" : "#5C3344" }}>{formatDate(d)}</div>
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#FFF5F8", borderRadius: 10, padding: "8px 12px", border: "1.5px solid #FFD9E8" }}>
-                        <span style={{ fontSize: 16, fontWeight: 700, color: "#FFB6D5" }}>¥</span>
-                        <input type="number" placeholder="売上を入力" value={dayData.amount || ""} onChange={(e) => updateSales({ ...sales, [dateStr]: { ...(sales[dateStr] || {}), amount: e.target.value } })} style={{ flex: 1, border: "none", background: "transparent", fontSize: 18, fontWeight: 700, color: "#5C3344", outline: "none" }} />
+
+            {salesView === "week" && (
+              <div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                  <button onClick={() => setWeekOffset((w) => w - 1)} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}>← 前週</button>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>{formatDate(dates[0])} 〜 {formatDate(dates[6])}</div>
+                  <button onClick={() => setWeekOffset((w) => w + 1)} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}>次週 →</button>
+                </div>
+                <div style={{ background: "linear-gradient(135deg, #FFB6D5, #FF8FAB)", borderRadius: 14, padding: "20px 24px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div>
+                    <div style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>週間売上合計</div>
+                    <div style={{ color: "#fff", fontSize: 28, fontWeight: 800, marginTop: 4 }}>{formatYen(weekSales)}</div>
+                  </div>
+                  <div style={{ fontSize: 36 }}>💎</div>
+                </div>
+                <div style={{ background: "#fff", borderRadius: 14, padding: 16, marginBottom: 16 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: "#5C3344", marginBottom: 12 }}>キャスト週間成績</div>
+                  {[...cast].sort((a, b) => totalStat(b.id, "shimei") - totalStat(a.id, "shimei")).map((member) => (
+                    <div key={member.id} style={{ display: "flex", alignItems: "center", gap: 10, background: "#FFF5F8", borderRadius: 10, padding: "10px 14px", marginBottom: 8 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: "50%", background: `linear-gradient(135deg, ${rankColor(member.rank)}, #FF8FAB)`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 13 }}>{member.name[0]}</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: 13 }}>{member.name}</div>
+                        <div style={{ fontSize: 10, color: rankColor(member.rank), fontWeight: 700 }}>{member.rank}</div>
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        {[{ key: "douhan", label: "本指名", color: "#FF6B6B" }, { key: "shimei", label: "姫指名", color: "#FFC93C" }, { key: "drink", label: "雑費", color: "#5DC9E2" }].map(({ key, label, color }) => (
+                          <div key={key} style={{ textAlign: "center", background: `${color}22`, borderRadius: 8, padding: "4px 10px" }}>
+                            <div style={{ fontSize: 16, fontWeight: 800, color }}>{totalStat(member.id, key)}</div>
+                            <div style={{ fontSize: 9, color: "#D4789F" }}>{label}</div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    <div style={{ textAlign: "right", minWidth: 70 }}>
-                      <div style={{ fontSize: 12, color: "#FF6B9D", fontWeight: 700 }}>{working}名出勤</div>
-                      {dayData.amount && working > 0 && <div style={{ fontSize: 11, color: "#FFC93C", fontWeight: 700 }}>¥{Math.round(Number(dayData.amount) / working).toLocaleString()}/人</div>}
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              );
-            })}
+                {dates.map((d, i) => {
+                  const dateStr = d.toDateString();
+                  const isWeekend = i >= 5;
+                  const isToday = d.toDateString() === new Date().toDateString();
+                  const dayData = sales[dateStr] || {};
+                  const working = cast.filter((c) => getShift(c.id, dateStr).status !== "off").length;
+                  return (
+                    <div key={i} style={{ background: "#fff", borderRadius: 14, padding: "14px 18px", marginBottom: 10, border: isToday ? "2px solid #FFC93C" : "2px solid transparent" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <div style={{ minWidth: 48 }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: isWeekend ? "#FF4D8D" : "#D4789F" }}>{DAYS[i]}</div>
+                          <div style={{ fontSize: 18, fontWeight: 800, color: isToday ? "#FFC93C" : isWeekend ? "#FF4D8D" : "#5C3344" }}>{formatDate(d)}</div>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#FFF5F8", borderRadius: 10, padding: "8px 12px", border: "1.5px solid #FFD9E8" }}>
+                            <span style={{ fontSize: 16, fontWeight: 700, color: "#FFB6D5" }}>¥</span>
+                            <input type="number" placeholder="売上を入力" value={dayData.amount || ""} onChange={(e) => updateSales({ ...sales, [dateStr]: { ...(sales[dateStr] || {}), amount: e.target.value } })} style={{ flex: 1, border: "none", background: "transparent", fontSize: 18, fontWeight: 700, color: "#5C3344", outline: "none" }} />
+                          </div>
+                        </div>
+                        <div style={{ textAlign: "right", minWidth: 70 }}>
+                          <div style={{ fontSize: 12, color: "#FF6B9D", fontWeight: 700 }}>{working}名出勤</div>
+                          {dayData.amount && working > 0 && <div style={{ fontSize: 11, color: "#FFC93C", fontWeight: 700 }}>¥{Math.round(Number(dayData.amount) / working).toLocaleString()}/人</div>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {salesView === "month" && (
+              <div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                  <button onClick={prevMonth} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}>← 前月</button>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>{summaryYear}年{summaryMonth + 1}月</div>
+                  <button onClick={nextMonth} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}>次月 →</button>
+                </div>
+                {/* Monthly total */}
+                {(() => {
+                  const monthTotal = monthDates.reduce((sum, d) => sum + (Number((sales[d.toDateString()] || {}).amount) || 0), 0);
+                  return (
+                    <div style={{ background: "linear-gradient(135deg, #FFB6D5, #FF8FAB)", borderRadius: 14, padding: "20px 24px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div>
+                        <div style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>月間売上合計</div>
+                        <div style={{ color: "#fff", fontSize: 28, fontWeight: 800, marginTop: 4 }}>{formatYen(monthTotal)}</div>
+                      </div>
+                      <div style={{ fontSize: 36 }}>💎</div>
+                    </div>
+                  );
+                })()}
+                {/* Daily list */}
+                {monthDates.map((d, i) => {
+                  const dateStr = d.toDateString();
+                  const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                  const isToday = d.toDateString() === new Date().toDateString();
+                  const dayData = sales[dateStr] || {};
+                  const working = cast.filter((c) => getShift(c.id, dateStr).status !== "off").length;
+                  const dayLabel = ["日","月","火","水","木","金","土"][d.getDay()];
+                  return (
+                    <div key={i} style={{ background: "#fff", borderRadius: 14, padding: "12px 16px", marginBottom: 8, border: isToday ? "2px solid #FFC93C" : "2px solid transparent" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <div style={{ minWidth: 52 }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: isWeekend ? "#FF4D8D" : "#D4789F" }}>{dayLabel}</div>
+                          <div style={{ fontSize: 16, fontWeight: 800, color: isToday ? "#FFC93C" : isWeekend ? "#FF4D8D" : "#5C3344" }}>{d.getMonth()+1}/{d.getDate()}</div>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#FFF5F8", borderRadius: 10, padding: "6px 12px", border: "1.5px solid #FFD9E8" }}>
+                            <span style={{ fontSize: 14, fontWeight: 700, color: "#FFB6D5" }}>¥</span>
+                            <input type="number" placeholder="売上を入力" value={dayData.amount || ""} onChange={(e) => updateSales({ ...sales, [dateStr]: { ...(sales[dateStr] || {}), amount: e.target.value } })} style={{ flex: 1, border: "none", background: "transparent", fontSize: 16, fontWeight: 700, color: "#5C3344", outline: "none" }} />
+                          </div>
+                        </div>
+                        <div style={{ textAlign: "right", minWidth: 60 }}>
+                          <div style={{ fontSize: 11, color: "#FF6B9D", fontWeight: 700 }}>{working}名</div>
+                          {dayData.amount && working > 0 && <div style={{ fontSize: 10, color: "#FFC93C", fontWeight: 700 }}>¥{Math.round(Number(dayData.amount)/working).toLocaleString()}/人</div>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
