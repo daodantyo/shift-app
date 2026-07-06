@@ -353,43 +353,6 @@ export default function CabShift() {
 
         {tab === "summary" && (
           <div>
-            {/* Weekly summary */}
-            <div style={{ background: "#fff", borderRadius: 14, padding: 16, marginBottom: 16, boxShadow: "0 2px 8px rgba(255,107,157,0.1)" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                <div style={{ fontWeight: 700, fontSize: 15, color: "#5C3344" }}>📊 週間集計</div>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <button onClick={() => setWeekOffset(w => w - 1)} style={{ background: "#FFF0F5", border: "none", borderRadius: 8, padding: "4px 10px", cursor: "pointer", color: "#FF6B9D", fontWeight: 700 }}>←</button>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "#D4789F" }}>{formatDate(dates[0])}〜{formatDate(dates[6])}</div>
-                  <button onClick={() => setWeekOffset(w => w + 1)} style={{ background: "#FFF0F5", border: "none", borderRadius: 8, padding: "4px 10px", cursor: "pointer", color: "#FF6B9D", fontWeight: 700 }}>→</button>
-                </div>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "80px repeat(3, 1fr)", gap: 4, marginBottom: 8 }}>
-                <div />
-                {STAT_ITEMS.map(({ label, color, emoji }) => (
-                  <div key={label} style={{ textAlign: "center", fontSize: 11, fontWeight: 700, color }}>{emoji}{label}</div>
-                ))}
-              </div>
-              {[...cast].sort((a, b) => weekStatTotal(b.id, "shimei") - weekStatTotal(a.id, "shimei")).map((member) => (
-                <div key={member.id} style={{ display: "grid", gridTemplateColumns: "80px repeat(3, 1fr)", gap: 4, marginBottom: 6, background: "#FFF5F8", borderRadius: 10, padding: "8px 10px", alignItems: "center" }}>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 12, color: "#5C3344" }}>{member.name}</div>
-                    <div style={{ fontSize: 10, color: rankColor(member.rank) }}>{member.rank}</div>
-                  </div>
-                  {STAT_ITEMS.map(({ key, color }) => (
-                    <div key={key} style={{ textAlign: "center", fontWeight: 800, fontSize: 20, color }}>{weekStatTotal(member.id, key)}</div>
-                  ))}
-                </div>
-              ))}
-              <div style={{ display: "grid", gridTemplateColumns: "80px repeat(3, 1fr)", gap: 4, marginTop: 8, borderTop: "2px solid #FFD9E8", paddingTop: 8 }}>
-                <div style={{ fontWeight: 700, fontSize: 12, color: "#D4789F" }}>合計</div>
-                {STAT_ITEMS.map(({ key, color }) => (
-                  <div key={key} style={{ textAlign: "center", fontWeight: 800, fontSize: 20, color }}>
-                    {cast.reduce((sum, m) => sum + weekStatTotal(m.id, key), 0)}
-                  </div>
-                ))}
-              </div>
-            </div>
-
             {/* Monthly summary */}
             <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 2px 8px rgba(255,107,157,0.1)" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
