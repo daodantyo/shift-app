@@ -123,6 +123,7 @@ export default function CabShift() {
   const weekSales = dates.reduce((sum, d) => sum + (Number((sales[d.toDateString()] || {}).amount) || 0), 0);
   const totalStat = (castId, key) => dates.reduce((sum, d) => sum + (Number(getStat(castId, d.toDateString())[key]) || 0), 0);
   const rankColor = (rank) => RANK_COLORS[rank] || "#888";
+  const [salesView, setSalesView] = useState("week");
   const [summaryMonth, setSummaryMonth] = useState(new Date().getMonth());
   const [summaryYear, setSummaryYear] = useState(new Date().getFullYear());
 
@@ -139,7 +140,7 @@ export default function CabShift() {
   const monthDates = Array.from({ length: daysInMonth }, (_, i) => new Date(summaryYear, summaryMonth, i + 1));
   const monthStatTotal = (castId, key) => monthDates.reduce((sum, d) => sum + (Number(getStat(castId, d.toDateString())[key]) || 0), 0);
   const weekStatTotal = (castId, key) => dates.reduce((sum, d) => sum + (Number(getStat(castId, d.toDateString())[key]) || 0), 0);
-  const [salesView, setSalesView] = useState("week"); // "week" | "month"
+  const STAT_ITEMS = [
     { key: "douhan", label: "本指名", color: "#FF6B6B", emoji: "💖" },
     { key: "shimei", label: "姫指名", color: "#FFC93C", emoji: "⭐" },
     { key: "drink", label: "雑費", color: "#5DC9E2", emoji: "💰" },
