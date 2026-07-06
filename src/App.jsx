@@ -123,6 +123,28 @@ export default function CabShift() {
   const weekSales = dates.reduce((sum, d) => sum + (Number((sales[d.toDateString()] || {}).amount) || 0), 0);
   const totalStat = (castId, key) => dates.reduce((sum, d) => sum + (Number(getStat(castId, d.toDateString())[key]) || 0), 0);
   const rankColor = (rank) => RANK_COLORS[rank] || "#888";
+  const [summaryMonth, setSummaryMonth] = useState(new Date().getMonth());
+  const [summaryYear, setSummaryYear] = useState(new Date().getFullYear());
+
+  const prevMonth = () => {
+    if (summaryMonth === 0) { setSummaryMonth(11); setSummaryYear(y => y - 1); }
+    else setSummaryMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (summaryMonth === 11) { setSummaryMonth(0); setSummaryYear(y => y + 1); }
+    else setSummaryMonth(m => m + 1);
+  };
+
+  const daysInMonth = new Date(summaryYear, summaryMonth + 1, 0).getDate();
+  const monthDates = Array.from({ length: daysInMonth }, (_, i) => new Date(summaryYear, summaryMonth, i + 1));
+  const monthStatTotal = (castId, key) => monthDates.reduce((sum, d) => sum + (Number(getStat(castId, d.toDateString())[key]) || 0), 0);
+  const weekStatTotal = (castId, key) => dates.reduce((sum, d) => sum + (Number(getStat(castId, d.toDateString())[key]) || 0), 0);
+  const STAT_ITEMS = [
+    { key: "douhan", label: "本指名", color: "#FF6B6B", emoji: "💖" },
+    { key: "shimei", label: "姫指名", color: "#FFC93C", emoji: "⭐" },
+    { key: "drink", label: "雑費", color: "#5DC9E2", emoji: "💰" },
+  ];
+
   const openDetail = (castId, dateStr) => setDetailModal({ castId, dateStr });
   const closeDetail = () => setDetailModal(null);
 
@@ -151,7 +173,7 @@ export default function CabShift() {
           {saved && <div style={{ background: "#6BCB77", color: "#fff", borderRadius: 20, padding: "4px 14px", fontSize: 12, fontWeight: 700 }}>☁️ 保存済み</div>}
         </div>
         <div style={{ display: "flex" }}>
-          {[{ id: "shift", label: "シフト" }, { id: "sales", label: "売上" }, { id: "cast", label: "キャスト" }].map((t) => (
+          {[{ id: "shift", label: "シフト" }, { id: "sales", label: "売上" }, { id: "summary", label: "集計" }, { id: "cast", label: "キャスト" }].map((t) => (
             <button key={t.id} onClick={() => setTab(t.id)} style={{ padding: "10px 20px", border: "none", cursor: "pointer", fontWeight: 600, fontSize: 14, borderRadius: "8px 8px 0 0", background: tab === t.id ? "#FFF5F8" : "transparent", color: tab === t.id ? "#5C3344" : "#D4789F" }}>{t.label}</button>
           ))}
         </div>
@@ -326,6 +348,84 @@ export default function CabShift() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {tab === "summary" && (
+          <div>
+            {/* Weekly summary */}
+            <div style={{ background: "#fff", borderRadius: 14, padding: 16, marginBottom: 16, boxShadow: "0 2px 8px rgba(255,107,157,0.1)" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "#5C3344" }}>📊 週間集計</div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <button onClick={() => setWeekOffset(w => w - 1)} style={{ background: "#FFF0F5", border: "none", borderRadius: 8, padding: "4px 10px", cursor: "pointer", color: "#FF6B9D", fontWeight: 700 }}>←</button>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "#D4789F" }}>{formatDate(dates[0])}〜{formatDate(dates[6])}</div>
+                  <button onClick={() => setWeekOffset(w => w + 1)} style={{ background: "#FFF0F5", border: "none", borderRadius: 8, padding: "4px 10px", cursor: "pointer", color: "#FF6B9D", fontWeight: 700 }}>→</button>
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "80px repeat(3, 1fr)", gap: 4, marginBottom: 8 }}>
+                <div />
+                {STAT_ITEMS.map(({ label, color, emoji }) => (
+                  <div key={label} style={{ textAlign: "center", fontSize: 11, fontWeight: 700, color }}>{emoji}{label}</div>
+                ))}
+              </div>
+              {[...cast].sort((a, b) => weekStatTotal(b.id, "shimei") - weekStatTotal(a.id, "shimei")).map((member) => (
+                <div key={member.id} style={{ display: "grid", gridTemplateColumns: "80px repeat(3, 1fr)", gap: 4, marginBottom: 6, background: "#FFF5F8", borderRadius: 10, padding: "8px 10px", alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 12, color: "#5C3344" }}>{member.name}</div>
+                    <div style={{ fontSize: 10, color: rankColor(member.rank) }}>{member.rank}</div>
+                  </div>
+                  {STAT_ITEMS.map(({ key, color }) => (
+                    <div key={key} style={{ textAlign: "center", fontWeight: 800, fontSize: 20, color }}>{weekStatTotal(member.id, key)}</div>
+                  ))}
+                </div>
+              ))}
+              <div style={{ display: "grid", gridTemplateColumns: "80px repeat(3, 1fr)", gap: 4, marginTop: 8, borderTop: "2px solid #FFD9E8", paddingTop: 8 }}>
+                <div style={{ fontWeight: 700, fontSize: 12, color: "#D4789F" }}>合計</div>
+                {STAT_ITEMS.map(({ key, color }) => (
+                  <div key={key} style={{ textAlign: "center", fontWeight: 800, fontSize: 20, color }}>
+                    {cast.reduce((sum, m) => sum + weekStatTotal(m.id, key), 0)}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Monthly summary */}
+            <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 2px 8px rgba(255,107,157,0.1)" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "#5C3344" }}>📅 月間集計</div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <button onClick={prevMonth} style={{ background: "#FFF0F5", border: "none", borderRadius: 8, padding: "4px 10px", cursor: "pointer", color: "#FF6B9D", fontWeight: 700 }}>←</button>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#5C3344" }}>{summaryYear}年{summaryMonth + 1}月</div>
+                  <button onClick={nextMonth} style={{ background: "#FFF0F5", border: "none", borderRadius: 8, padding: "4px 10px", cursor: "pointer", color: "#FF6B9D", fontWeight: 700 }}>→</button>
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "80px repeat(3, 1fr)", gap: 4, marginBottom: 8 }}>
+                <div />
+                {STAT_ITEMS.map(({ label, color, emoji }) => (
+                  <div key={label} style={{ textAlign: "center", fontSize: 11, fontWeight: 700, color }}>{emoji}{label}</div>
+                ))}
+              </div>
+              {[...cast].sort((a, b) => monthStatTotal(b.id, "shimei") - monthStatTotal(a.id, "shimei")).map((member) => (
+                <div key={member.id} style={{ display: "grid", gridTemplateColumns: "80px repeat(3, 1fr)", gap: 4, marginBottom: 6, background: "#FFF5F8", borderRadius: 10, padding: "8px 10px", alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 12, color: "#5C3344" }}>{member.name}</div>
+                    <div style={{ fontSize: 10, color: rankColor(member.rank) }}>{member.rank}</div>
+                  </div>
+                  {STAT_ITEMS.map(({ key, color }) => (
+                    <div key={key} style={{ textAlign: "center", fontWeight: 800, fontSize: 20, color }}>{monthStatTotal(member.id, key)}</div>
+                  ))}
+                </div>
+              ))}
+              <div style={{ display: "grid", gridTemplateColumns: "80px repeat(3, 1fr)", gap: 4, marginTop: 8, borderTop: "2px solid #FFD9E8", paddingTop: 8 }}>
+                <div style={{ fontWeight: 700, fontSize: 12, color: "#D4789F" }}>合計</div>
+                {STAT_ITEMS.map(({ key, color }) => (
+                  <div key={key} style={{ textAlign: "center", fontWeight: 800, fontSize: 20, color }}>
+                    {cast.reduce((sum, m) => sum + monthStatTotal(m.id, key), 0)}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
