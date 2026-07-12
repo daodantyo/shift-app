@@ -1,20 +1,7 @@
 import { useState, useEffect } from "react";
-import { initializeApp } from "firebase/app";
-import { getDatabase, ref, set, onValue } from "firebase/database";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyAzhuyDJq_JvfzjOBvs6JjloLbozJmsMLs",
-  authDomain: "shift-app-fa13d.firebaseapp.com",
-  databaseURL: "https://shift-app-fa13d-default-rtdb.firebaseio.com",
-  projectId: "shift-app-fa13d",
-  storageBucket: "shift-app-fa13d.firebasestorage.app",
-  messagingSenderId: "599604964523",
-  appId: "1:599604964523:web:2e37264761ec38983c1bee",
-  measurementId: "G-26YKL68CMF"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+import { db } from "./firebase";
+import { ref, set, onValue, update, remove } from "firebase/database";
+import ShiftRequestForm from "./ShiftRequestForm";
 
 const DAYS = ["月", "火", "水", "木", "金", "土", "日"];
 const INITIAL_CAST = [
@@ -52,6 +39,9 @@ function formatYen(val) {
 }
 
 export default function CabShift() {
+  // LINEの希望シフトフォームは #request でアクセスした時だけ表示する
+  const isRequestPage = typeof window !== "undefined" && window.location.hash === "#request";
+
   const [tab, setTab] = useState("shift");
   const [cast, setCast] = useState(INITIAL_CAST);
   const [weekOffset, setWeekOffset] = useState(0);
@@ -59,6 +49,7 @@ export default function CabShift() {
   const [shifts, setShifts] = useState({});
   const [sales, setSales] = useState({});
   const [stats, setStats] = useState({});
+  const [requests, setRequests] = useState({});
   const [newName, setNewName] = useState("");
   const [newRank, setNewRank] = useState("キャスト");
   const [editingCast, setEditingCast] = useState(null);
@@ -79,6 +70,15 @@ export default function CabShift() {
         if (data.stats) setStats(data.stats);
       }
       setLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
+  // 希望シフトの読み込み
+  useEffect(() => {
+    const reqRef = ref(db, "shiftRequests");
+    const unsub = onValue(reqRef, (snapshot) => {
+      setRequests(snapshot.val() || {});
     });
     return () => unsub();
   }, []);
@@ -139,7 +139,6 @@ export default function CabShift() {
   const daysInMonth = new Date(summaryYear, summaryMonth + 1, 0).getDate();
   const monthDates = Array.from({ length: daysInMonth }, (_, i) => new Date(summaryYear, summaryMonth, i + 1));
   const monthStatTotal = (castId, key) => monthDates.reduce((sum, d) => sum + (Number(getStat(castId, d.toDateString())[key]) || 0), 0);
-  const weekStatTotal = (castId, key) => dates.reduce((sum, d) => sum + (Number(getStat(castId, d.toDateString())[key]) || 0), 0);
   const STAT_ITEMS = [
     { key: "douhan", label: "本指名", color: "#FF6B6B", emoji: "💖" },
     { key: "shimei", label: "姫指名", color: "#FFC93C", emoji: "⭐" },
@@ -149,11 +148,38 @@ export default function CabShift() {
   const openDetail = (castId, dateStr) => setDetailModal({ castId, dateStr });
   const closeDetail = () => setDetailModal(null);
 
-  const totalHours = (castId) => dates.reduce((sum, d) => {
-    const s = getShift(castId, d.toDateString());
-    const h = calcHours(s.in, s.out);
-    return sum + (h ? Number(h) : 0);
-  }, 0).toFixed(1);
+  // 希望シフトを承認 → 実際のシフトに反映
+  const approveRequest = (key, req) => {
+    const newShifts = { ...shifts };
+    newShifts[req.castId] = { ...(newShifts[req.castId] || {}) };
+    Object.entries(req.entries || {}).forEach(([dateStr, entry]) => {
+      newShifts[req.castId][dateStr] = {
+        status: entry.status === "work" ? "work" : "off",
+        in: entry.in || "",
+        out: entry.out || "",
+      };
+    });
+    setShifts(newShifts);
+    saveToFirebase({ cast, shifts: newShifts, sales, stats });
+    update(ref(db, `shiftRequests/${key}`), { status: "approved" });
+  };
+
+  const rejectRequest = (key) => {
+    update(ref(db, `shiftRequests/${key}`), { status: "rejected" });
+  };
+
+  const deleteRequest = (key) => {
+    remove(ref(db, `shiftRequests/${key}`));
+  };
+
+  const pendingRequests = Object.entries(requests || {})
+    .filter(([, r]) => r.status === "pending")
+    .sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
+
+  // LINEから開いた場合は希望シフト提出フォームだけを表示する
+  if (isRequestPage) {
+    return <ShiftRequestForm />;
+  }
 
   if (loading) return (
     <div style={{ fontFamily: "'Segoe UI','Noto Sans JP',sans-serif", minHeight: "100vh", background: "#FFF5F8", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12 }}>
@@ -173,8 +199,8 @@ export default function CabShift() {
           </div>
           {saved && <div style={{ background: "#6BCB77", color: "#fff", borderRadius: 20, padding: "4px 14px", fontSize: 12, fontWeight: 700 }}>☁️ 保存済み</div>}
         </div>
-        <div style={{ display: "flex" }}>
-          {[{ id: "shift", label: "シフト" }, { id: "sales", label: "売上" }, { id: "summary", label: "集計" }, { id: "cast", label: "キャスト" }].map((t) => (
+        <div style={{ display: "flex", flexWrap: "wrap" }}>
+          {[{ id: "shift", label: "シフト" }, { id: "sales", label: "売上" }, { id: "summary", label: "集計" }, { id: "cast", label: "キャスト" }, { id: "requests", label: `希望シフト${pendingRequests.length ? ` (${pendingRequests.length})` : ""}` }].map((t) => (
             <button key={t.id} onClick={() => setTab(t.id)} style={{ padding: "10px 20px", border: "none", cursor: "pointer", fontWeight: 600, fontSize: 14, borderRadius: "8px 8px 0 0", background: tab === t.id ? "#FFF5F8" : "transparent", color: tab === t.id ? "#5C3344" : "#D4789F" }}>{t.label}</button>
           ))}
         </div>
@@ -290,7 +316,6 @@ export default function CabShift() {
 
         {tab === "sales" && (
           <div>
-            {/* Toggle */}
             <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
               {[{ id: "week", label: "週間" }, { id: "month", label: "月間" }].map((v) => (
                 <button key={v.id} onClick={() => setSalesView(v.id)} style={{ flex: 1, padding: "10px 0", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: "pointer", background: salesView === v.id ? "linear-gradient(135deg, #FFB6D5, #FF8FAB)" : "#fff", color: salesView === v.id ? "#fff" : "#D4789F", boxShadow: salesView === v.id ? "0 2px 8px rgba(255,107,157,0.3)" : "none" }}>
@@ -370,7 +395,6 @@ export default function CabShift() {
                   <div style={{ fontWeight: 700, fontSize: 15 }}>{summaryYear}年{summaryMonth + 1}月</div>
                   <button onClick={nextMonth} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}>次月 →</button>
                 </div>
-                {/* Monthly total */}
                 {(() => {
                   const monthTotal = monthDates.reduce((sum, d) => sum + (Number((sales[d.toDateString()] || {}).amount) || 0), 0);
                   return (
@@ -383,7 +407,6 @@ export default function CabShift() {
                     </div>
                   );
                 })()}
-                {/* Daily list */}
                 {monthDates.map((d, i) => {
                   const dateStr = d.toDateString();
                   const isWeekend = d.getDay() === 0 || d.getDay() === 6;
@@ -419,7 +442,6 @@ export default function CabShift() {
 
         {tab === "summary" && (
           <div>
-            {/* Monthly summary */}
             <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 2px 8px rgba(255,107,157,0.1)" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                 <div style={{ fontWeight: 700, fontSize: 15, color: "#5C3344" }}>📅 月間集計</div>
@@ -506,6 +528,63 @@ export default function CabShift() {
                 )}
               </div>
             ))}
+          </div>
+        )}
+
+        {tab === "requests" && (
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>LINEからの希望シフト</div>
+            {pendingRequests.length === 0 && (
+              <div style={{ textAlign: "center", color: "#D4789F", padding: 40, background: "#fff", borderRadius: 14 }}>
+                現在、届いている希望シフトはありません
+              </div>
+            )}
+            {pendingRequests.map(([key, req]) => {
+              const member = cast.find((c) => String(c.id) === String(req.castId));
+              const entryList = Object.entries(req.entries || {}).sort(
+                (a, b) => new Date(a[0]) - new Date(b[0])
+              );
+              return (
+                <div key={key} style={{ background: "#fff", borderRadius: 14, padding: 16, marginBottom: 12, border: "2px solid #FFD9E8" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 15 }}>{member?.name || "不明なキャスト"}</div>
+                      <div style={{ fontSize: 11, color: "#D4789F" }}>
+                        {req.lineName ? `LINE: ${req.lineName}` : ""}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 11, color: "#D4789F" }}>
+                      {req.weekStart}週
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+                    {entryList.map(([dateStr, entry]) => {
+                      const d = new Date(dateStr);
+                      const isWork = entry.status === "work";
+                      return (
+                        <div key={dateStr} style={{ background: isWork ? "#FFF0F5" : "#f5f5f5", borderRadius: 8, padding: "6px 10px", fontSize: 12 }}>
+                          <div style={{ fontWeight: 700 }}>{d.getMonth() + 1}/{d.getDate()}({DAYS[(d.getDay() + 6) % 7]})</div>
+                          <div style={{ color: isWork ? "#FF6B9D" : "#999" }}>
+                            {isWork ? `${entry.in || "?"}〜${entry.out || "?"}` : "休み希望"}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => approveRequest(key, req)} style={{ flex: 1, background: "linear-gradient(135deg, #6BCB77, #4CAF50)", color: "#fff", border: "none", borderRadius: 8, padding: "10px 0", fontWeight: 700, cursor: "pointer" }}>
+                      承認してシフトに反映
+                    </button>
+                    <button onClick={() => rejectRequest(key)} style={{ background: "#FFF0F5", color: "#D4789F", border: "none", borderRadius: 8, padding: "10px 16px", fontWeight: 600, cursor: "pointer" }}>
+                      却下
+                    </button>
+                    <button onClick={() => deleteRequest(key)} style={{ background: "#fff0f0", color: "#FF6B6B", border: "none", borderRadius: 8, padding: "10px 16px", fontWeight: 600, cursor: "pointer" }}>
+                      削除
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
