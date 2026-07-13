@@ -419,6 +419,7 @@ export default function CabShift() {
                 })}
               </div>
             </div>
+            </div>
             )}
 
             {shiftView === "month" && (
