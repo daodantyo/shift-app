@@ -20,6 +20,15 @@ function getWeekDates(offset = 0) {
   });
 }
 
+function getMonthDates(monthOffset = 1) {
+  const now = new Date();
+  const target = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
+  const year = target.getFullYear();
+  const month = target.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  return Array.from({ length: daysInMonth }, (_, i) => new Date(year, month, i + 1));
+}
+
 export default function ShiftRequestForm() {
   const [ready, setReady] = useState(false);
   const [profile, setProfile] = useState(null);
@@ -28,9 +37,18 @@ export default function ShiftRequestForm() {
   const [entries, setEntries] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const [requestView, setRequestView] = useState("week");
+  const [monthOffset, setMonthOffset] = useState(1);
 
   // 来週分の希望を出す想定(必要なら offset を 0 に変えて今週分にできます)
-  const dates = getWeekDates(1);
+  const weekDates = getWeekDates(1);
+  const monthDates = getMonthDates(monthOffset);
+  const dates = requestView === "week" ? weekDates : monthDates;
+
+  const switchView = (v) => {
+    setRequestView(v);
+    setEntries({});
+  };
 
   useEffect(() => {
     liff
@@ -76,6 +94,7 @@ export default function ShiftRequestForm() {
       castId: selectedCastId,
       lineUserId: profile?.userId || null,
       lineName: profile?.displayName || null,
+      periodType: requestView,
       weekStart: dates[0].toDateString(),
       entries,
       createdAt: Date.now(),
@@ -161,15 +180,61 @@ export default function ShiftRequestForm() {
         </select>
       </div>
 
-      <div style={{ marginBottom: 12, fontWeight: 700, color: "#5C3344" }}>
-        {dates[0].getMonth() + 1}/{dates[0].getDate()} 〜 {dates[6].getMonth() + 1}/
-        {dates[6].getDate()} の希望
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        {[{ id: "week", label: "週間" }, { id: "month", label: "月間" }].map((v) => (
+          <button
+            key={v.id}
+            onClick={() => switchView(v.id)}
+            style={{
+              flex: 1,
+              padding: "10px 0",
+              border: "none",
+              borderRadius: 10,
+              fontWeight: 700,
+              fontSize: 14,
+              cursor: "pointer",
+              background: requestView === v.id ? "linear-gradient(135deg, #FFB6D5, #FF8FAB)" : "#fff",
+              color: requestView === v.id ? "#fff" : "#D4789F",
+              boxShadow: requestView === v.id ? "0 2px 8px rgba(255,107,157,0.3)" : "none",
+            }}
+          >
+            {v.label}
+          </button>
+        ))}
       </div>
+
+      {requestView === "week" && (
+        <div style={{ marginBottom: 12, fontWeight: 700, color: "#5C3344" }}>
+          {dates[0].getMonth() + 1}/{dates[0].getDate()} 〜 {dates[dates.length - 1].getMonth() + 1}/
+          {dates[dates.length - 1].getDate()} の希望(来週分)
+        </div>
+      )}
+
+      {requestView === "month" && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <button
+            onClick={() => setMonthOffset((m) => m - 1)}
+            style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "6px 14px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}
+          >
+            ← 前月
+          </button>
+          <div style={{ fontWeight: 700, color: "#5C3344" }}>
+            {dates[0].getFullYear()}年{dates[0].getMonth() + 1}月 の希望
+          </div>
+          <button
+            onClick={() => setMonthOffset((m) => m + 1)}
+            style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "6px 14px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}
+          >
+            次月 →
+          </button>
+        </div>
+      )}
 
       {dates.map((d, i) => {
         const dateStr = d.toDateString();
         const entry = entries[dateStr] || { status: "off" };
         const isWork = entry.status === "work";
+        const dayLabel = requestView === "week" ? DAYS[i] : DAYS[(d.getDay() + 6) % 7];
         return (
           <div
             key={i}
@@ -188,7 +253,7 @@ export default function ShiftRequestForm() {
               }}
             >
               <div style={{ fontWeight: 700 }}>
-                {DAYS[i]} {d.getMonth() + 1}/{d.getDate()}
+                {dayLabel} {d.getMonth() + 1}/{d.getDate()}
               </div>
               <button
                 onClick={() =>
