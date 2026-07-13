@@ -145,6 +145,7 @@ export default function CabShift() {
   const weekSales = dates.reduce((sum, d) => sum + (Number((sales[d.toDateString()] || {}).amount) || 0), 0);
   const totalStat = (castId, key) => dates.reduce((sum, d) => sum + (Number(getStat(castId, d.toDateString())[key]) || 0), 0);
   const rankColor = (rank) => RANK_COLORS[rank] || "#888";
+  const [shiftView, setShiftView] = useState("week");
   const [salesView, setSalesView] = useState("week");
   const [summaryMonth, setSummaryMonth] = useState(new Date().getMonth());
   const [summaryYear, setSummaryYear] = useState(new Date().getFullYear());
@@ -306,6 +307,16 @@ export default function CabShift() {
       <div style={{ padding: "20px 16px", maxWidth: 1000, margin: "0 auto" }}>
         {tab === "shift" && (
           <div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+              {[{ id: "week", label: "週間" }, { id: "month", label: "月間" }].map((v) => (
+                <button key={v.id} onClick={() => setShiftView(v.id)} style={{ flex: 1, padding: "10px 0", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: "pointer", background: shiftView === v.id ? "linear-gradient(135deg, #FFB6D5, #FF8FAB)" : "#fff", color: shiftView === v.id ? "#fff" : "#D4789F", boxShadow: shiftView === v.id ? "0 2px 8px rgba(255,107,157,0.3)" : "none" }}>
+                  {v.label}
+                </button>
+              ))}
+            </div>
+
+            {shiftView === "week" && (
+            <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
               <button onClick={() => setWeekOffset((w) => w - 1)} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}>← 前週</button>
               <div style={{ fontWeight: 700, fontSize: 15 }}>{formatDate(dates[0])} 〜 {formatDate(dates[6])}</div>
@@ -408,6 +419,56 @@ export default function CabShift() {
                 })}
               </div>
             </div>
+            )}
+
+            {shiftView === "month" && (
+              <div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                  <button onClick={prevMonth} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}>← 前月</button>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>{summaryYear}年{summaryMonth + 1}月</div>
+                  <button onClick={nextMonth} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}>次月 →</button>
+                </div>
+                {monthDates.map((d, i) => {
+                  const dateStr = d.toDateString();
+                  const isToday = d.toDateString() === new Date().toDateString();
+                  const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                  const dayLabel = ["日", "月", "火", "水", "木", "金", "土"][d.getDay()];
+                  const working = cast.filter((c) => getShift(c.id, dateStr).status !== "off").length;
+                  return (
+                    <div key={i} style={{ background: "#fff", borderRadius: 12, padding: "10px 14px", marginBottom: 8, border: isToday ? "2px solid #FFC93C" : "2px solid transparent" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                        <div style={{ fontWeight: 700, fontSize: 12, color: isWeekend ? "#FF4D8D" : "#D4789F" }}>{dayLabel}</div>
+                        <div style={{ fontWeight: 800, fontSize: 14, color: isToday ? "#FFC93C" : "#5C3344" }}>{d.getMonth() + 1}/{d.getDate()}</div>
+                        <div style={{ fontSize: 11, color: "#D4789F" }}>{working}名出勤</div>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {cast.map((member) => {
+                          const s = getShift(member.id, dateStr);
+                          const isOff = s.status === "off";
+                          const hours = calcHours(s.in, s.out);
+                          return (
+                            <div key={member.id} style={{ display: "flex", alignItems: "center", gap: 8, background: isOff ? "transparent" : "#FFF5F8", borderRadius: 8, padding: "4px 8px" }}>
+                              <div style={{ width: 64, fontSize: 12, fontWeight: 700, color: "#5C3344", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{member.name}</div>
+                              <button onClick={() => updateShift(member.id, dateStr, { status: isOff ? "work" : "off" })} style={{ border: "none", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", background: isOff ? "#f0f0f0" : "linear-gradient(135deg, #FF8FAB, #FF6B9D)", color: isOff ? "#bbb" : "#fff" }}>
+                                {isOff ? "休み" : "出勤"}
+                              </button>
+                              {!isOff && (
+                                <>
+                                  <input type="time" value={s.in || ""} onChange={(e) => updateShift(member.id, dateStr, { in: e.target.value })} style={{ border: "1px solid #FFD9E8", borderRadius: 5, padding: "2px 4px", fontSize: 11, outline: "none", color: "#5C3344", width: 84 }} />
+                                  <span style={{ fontSize: 11, color: "#D4789F" }}>〜</span>
+                                  <input type="time" value={s.out || ""} onChange={(e) => updateShift(member.id, dateStr, { out: e.target.value })} style={{ border: "1px solid #FFD9E8", borderRadius: 5, padding: "2px 4px", fontSize: 11, outline: "none", color: "#5C3344", width: 84 }} />
+                                  {hours && <span style={{ fontSize: 10, color: "#D4789F" }}>{hours}h</span>}
+                                </>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
