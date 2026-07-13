@@ -6,7 +6,7 @@ import { ref, push, onValue } from "firebase/database";
 const DAYS = ["月", "火", "水", "木", "金", "土", "日"];
 
 // ↓ LINE Developersコンソールで発行したLIFF IDに置き換えてください
-const LIFF_ID = "YOUR_LIFF_ID";
+const LIFF_ID = "2010692487-HEfxObPq";
 
 function getWeekDates(offset = 0) {
   const now = new Date();
