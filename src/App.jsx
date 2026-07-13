@@ -42,6 +42,26 @@ export default function CabShift() {
   // LINEの希望シフトフォームは ?request=1 でアクセスした時だけ表示する
   const isRequestPage = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("request") === "1";
 
+  // ↓ 管理画面に入るためのパスワード。好きな文字列に変更してください
+  const ADMIN_PASSWORD = "sakura2026";
+
+  const [unlocked, setUnlocked] = useState(
+    typeof window !== "undefined" && localStorage.getItem("shiftAppUnlocked") === "1"
+  );
+  const [passwordInput, setPasswordInput] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+
+  const handleUnlock = () => {
+    if (passwordInput === ADMIN_PASSWORD) {
+      localStorage.setItem("shiftAppUnlocked", "1");
+      setUnlocked(true);
+      setPasswordError("");
+    } else {
+      setPasswordError("パスワードが違います");
+      setPasswordInput("");
+    }
+  };
+
   const [tab, setTab] = useState("shift");
   const [cast, setCast] = useState(INITIAL_CAST);
   const [weekOffset, setWeekOffset] = useState(0);
@@ -179,6 +199,31 @@ export default function CabShift() {
   // LINEから開いた場合は希望シフト提出フォームだけを表示する
   if (isRequestPage) {
     return <ShiftRequestForm />;
+  }
+
+  if (!unlocked) {
+    return (
+      <div style={{ fontFamily: "'Segoe UI','Noto Sans JP',sans-serif", minHeight: "100vh", background: "#FFF5F8", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
+        <div style={{ fontSize: 40 }}>🔒</div>
+        <div style={{ color: "#5C3344", fontWeight: 700, fontSize: 18 }}>管理画面ログイン</div>
+        <input
+          type="password"
+          value={passwordInput}
+          onChange={(e) => setPasswordInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleUnlock()}
+          placeholder="パスワードを入力"
+          autoFocus
+          style={{ padding: "12px 16px", borderRadius: 10, border: "1.5px solid #FFD9E8", fontSize: 16, width: 240, textAlign: "center", outline: "none" }}
+        />
+        {passwordError && <div style={{ color: "#FF6B6B", fontSize: 13, fontWeight: 700 }}>{passwordError}</div>}
+        <button
+          onClick={handleUnlock}
+          style={{ background: "linear-gradient(135deg, #FF8FAB, #FF6B9D)", color: "#fff", border: "none", borderRadius: 10, padding: "12px 32px", fontWeight: 700, fontSize: 15, cursor: "pointer" }}
+        >
+          ログイン
+        </button>
+      </div>
+    );
   }
 
   if (loading) return (
