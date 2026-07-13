@@ -138,7 +138,7 @@ export default function ShiftRequestForm() {
       <h2 style={{ color: "#5C3344", textAlign: "center", marginBottom: 4 }}>
         希望シフト提出
       </h2>
-      {profile && (
+      {false && profile && (
         <div
           style={{
             textAlign: "center",
