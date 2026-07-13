@@ -39,8 +39,8 @@ function formatYen(val) {
 }
 
 export default function CabShift() {
-  // LINEの希望シフトフォームは #request でアクセスした時だけ表示する
-  const isRequestPage = typeof window !== "undefined" && window.location.hash === "#request";
+  // LINEの希望シフトフォームは ?request=1 でアクセスした時だけ表示する
+  const isRequestPage = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("request") === "1";
 
   const [tab, setTab] = useState("shift");
   const [cast, setCast] = useState(INITIAL_CAST);
