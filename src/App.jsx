@@ -41,6 +41,8 @@ function formatYen(val) {
 export default function CabShift() {
   // LINEの希望シフトフォームは ?request=1 でアクセスした時だけ表示する
   const isRequestPage = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("request") === "1";
+  // スタッフ用のシフト閲覧専用ページは ?view=1 でアクセスした時だけ表示する(パスワード不要)
+  const isViewPage = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("view") === "1";
 
   // ↓ 管理画面に入るためのパスワード。好きな文字列に変更してください
   const ADMIN_PASSWORD = "sakura2026";
@@ -199,6 +201,56 @@ export default function CabShift() {
   // LINEから開いた場合は希望シフト提出フォームだけを表示する
   if (isRequestPage) {
     return <ShiftRequestForm />;
+  }
+
+  // スタッフ向け:シフトを見るだけの画面(編集不可・パスワード不要)
+  if (isViewPage) {
+    return (
+      <div style={{ fontFamily: "'Segoe UI','Noto Sans JP',sans-serif", minHeight: "100vh", background: "#FFF5F8", color: "#5C3344", padding: 16 }}>
+        <div style={{ textAlign: "center", fontWeight: 700, fontSize: 18, marginBottom: 16, color: "#5C3344" }}>🌸 シフト表</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, maxWidth: 500, margin: "0 auto 16px" }}>
+          <button onClick={() => setWeekOffset((w) => w - 1)} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}>← 前週</button>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>{formatDate(dates[0])} 〜 {formatDate(dates[6])}</div>
+          <button onClick={() => setWeekOffset((w) => w + 1)} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}>次週 →</button>
+        </div>
+        <div style={{ maxWidth: 500, margin: "0 auto" }}>
+          {dates.map((d, i) => {
+            const dateStr = d.toDateString();
+            const isToday = d.toDateString() === new Date().toDateString();
+            const isWeekend = i >= 5;
+            const working = cast.filter((c) => getShift(c.id, dateStr).status !== "off")
+              .sort((a, b) => (getShift(a.id, dateStr).in || "99:99").localeCompare(getShift(b.id, dateStr).in || "99:99"));
+            return (
+              <div key={i} style={{ background: "#fff", borderRadius: 12, padding: "12px 16px", marginBottom: 10, border: isToday ? "2px solid #FFC93C" : "2px solid transparent" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: working.length ? 8 : 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: isWeekend ? "#FF4D8D" : "#D4789F" }}>{DAYS[i]}</div>
+                  <div style={{ fontWeight: 800, fontSize: 15, color: isToday ? "#FFC93C" : "#5C3344" }}>{formatDate(d)}</div>
+                  <div style={{ fontSize: 12, color: "#D4789F" }}>{working.length}名出勤</div>
+                </div>
+                {working.length === 0 ? (
+                  <div style={{ fontSize: 12, color: "#FFB6D5" }}>出勤者なし</div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {working.map((c) => {
+                      const s = getShift(c.id, dateStr);
+                      return (
+                        <div key={c.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#FFF5F8", borderRadius: 8, padding: "6px 10px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <div style={{ width: 8, height: 8, borderRadius: "50%", background: rankColor(c.rank) }} />
+                            <div style={{ fontWeight: 700, fontSize: 13 }}>{c.name}</div>
+                          </div>
+                          <div style={{ fontSize: 12, color: "#D4789F", fontWeight: 700 }}>{s.in || "?"} 〜 {s.out || "?"}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
   }
 
   if (!unlocked) {
