@@ -76,6 +76,19 @@ export default function ShiftRequestForm() {
     return () => unsub();
   }, []);
 
+  const [confirmedShifts, setConfirmedShifts] = useState({});
+
+  useEffect(() => {
+    const shiftsRef = ref(db, "shiftapp/shifts");
+    const unsub = onValue(shiftsRef, (snap) => {
+      setConfirmedShifts(snap.val() || {});
+    });
+    return () => unsub();
+  }, []);
+
+  const getConfirmedShift = (castId, dateStr) =>
+    (confirmedShifts[castId] || {})[dateStr] || { status: "off", in: "", out: "" };
+
   const updateEntry = (dateStr, patch) => {
     setEntries((prev) => ({
       ...prev,
@@ -138,6 +151,52 @@ export default function ShiftRequestForm() {
       <h2 style={{ color: "#5C3344", textAlign: "center", marginBottom: 4 }}>
         希望シフト提出
       </h2>
+
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontWeight: 700, color: "#5C3344", fontSize: 13, marginBottom: 6 }}>
+          🌸 現在のシフト表(確定分)
+        </div>
+        <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 6 }}>
+          {dates.map((d, i) => {
+            const dateStr = d.toDateString();
+            const isToday = d.toDateString() === new Date().toDateString();
+            const working = castList
+              .filter((c) => getConfirmedShift(c.id, dateStr).status !== "off")
+              .sort((a, b) => (getConfirmedShift(a.id, dateStr).in || "99:99").localeCompare(getConfirmedShift(b.id, dateStr).in || "99:99"));
+            return (
+              <div
+                key={i}
+                style={{
+                  background: isToday ? "rgba(255,199,60,0.15)" : "#fff",
+                  borderRadius: 10,
+                  padding: "6px 6px",
+                  border: isToday ? "1.5px solid #FFC93C" : "1.5px solid #FFD9E8",
+                  minWidth: 78,
+                  flexShrink: 0,
+                }}
+              >
+                <div style={{ textAlign: "center", marginBottom: 4 }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: "#D4789F" }}>
+                    {requestView === "week" ? DAYS[i] : DAYS[(d.getDay() + 6) % 7]}
+                  </div>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: isToday ? "#FFC93C" : "#5C3344" }}>
+                    {d.getMonth() + 1}/{d.getDate()}
+                  </div>
+                </div>
+                {working.length === 0 ? (
+                  <div style={{ textAlign: "center", fontSize: 8, color: "#FFB6D5" }}>なし</div>
+                ) : (
+                  working.map((c) => (
+                    <div key={c.id} style={{ fontSize: 9, fontWeight: 700, color: "#5C3344", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {c.name}
+                    </div>
+                  ))
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
       {false && profile && (
         <div
           style={{
