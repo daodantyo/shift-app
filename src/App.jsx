@@ -440,8 +440,8 @@ export default function CabShift() {
                           </button>
                           {!isOff && (
                             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                              <input type="time" value={s.in || ""} onChange={(e) => updateShift(member.id, dateStr, { in: e.target.value })} style={{ width: "100%", border: "1px solid #FFD9E8", borderRadius: 5, padding: "2px 2px", fontSize: 10, outline: "none", color: "#5C3344" }} />
-                              <input type="time" value={s.out || ""} onChange={(e) => updateShift(member.id, dateStr, { out: e.target.value })} style={{ width: "100%", border: "1px solid #FFD9E8", borderRadius: 5, padding: "2px 2px", fontSize: 10, outline: "none", color: "#5C3344" }} />
+                              <input type="time" step="1800" value={s.in || ""} onChange={(e) => updateShift(member.id, dateStr, { in: e.target.value })} style={{ width: "100%", border: "1px solid #FFD9E8", borderRadius: 5, padding: "2px 2px", fontSize: 10, outline: "none", color: "#5C3344" }} />
+                              <input type="time" step="1800" value={s.out || ""} onChange={(e) => updateShift(member.id, dateStr, { out: e.target.value })} style={{ width: "100%", border: "1px solid #FFD9E8", borderRadius: 5, padding: "2px 2px", fontSize: 10, outline: "none", color: "#5C3344" }} />
                               {hours && <div style={{ textAlign: "center", fontSize: 9, color: "#D4789F" }}>{hours}h</div>}
                               <button onClick={() => openDetail(member.id, dateStr)} style={{ background: "rgba(255,199,60,0.15)", border: "1px solid rgba(255,199,60,0.3)", borderRadius: 5, padding: "2px 0", fontSize: 9, color: "#FFC93C", cursor: "pointer", fontWeight: 700 }}>
                                 本{stat.douhan} 姫{stat.shimei} 💰{stat.drink}
@@ -505,9 +505,9 @@ export default function CabShift() {
                               </button>
                               {!isOff && (
                                 <>
-                                  <input type="time" value={s.in || ""} onChange={(e) => updateShift(member.id, dateStr, { in: e.target.value })} style={{ border: "1px solid #FFD9E8", borderRadius: 5, padding: "2px 4px", fontSize: 11, outline: "none", color: "#5C3344", width: 84 }} />
+                                  <input type="time" step="1800" value={s.in || ""} onChange={(e) => updateShift(member.id, dateStr, { in: e.target.value })} style={{ border: "1px solid #FFD9E8", borderRadius: 5, padding: "2px 4px", fontSize: 11, outline: "none", color: "#5C3344", width: 84 }} />
                                   <span style={{ fontSize: 11, color: "#D4789F" }}>〜</span>
-                                  <input type="time" value={s.out || ""} onChange={(e) => updateShift(member.id, dateStr, { out: e.target.value })} style={{ border: "1px solid #FFD9E8", borderRadius: 5, padding: "2px 4px", fontSize: 11, outline: "none", color: "#5C3344", width: 84 }} />
+                                  <input type="time" step="1800" value={s.out || ""} onChange={(e) => updateShift(member.id, dateStr, { out: e.target.value })} style={{ border: "1px solid #FFD9E8", borderRadius: 5, padding: "2px 4px", fontSize: 11, outline: "none", color: "#5C3344", width: 84 }} />
                                   {hours && <span style={{ fontSize: 10, color: "#D4789F" }}>{hours}h</span>}
                                 </>
                               )}
