@@ -350,7 +350,8 @@ export default function CabShift() {
               })}
             </div>
 
-            <div style={{ background: "#fff", borderRadius: 14, overflow: "hidden", boxShadow: "0 2px 12px rgba(255,107,157,0.12)" }}>
+            <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+            <div style={{ background: "#fff", borderRadius: 14, overflow: "hidden", boxShadow: "0 2px 12px rgba(255,107,157,0.12)", minWidth: 640 }}>
               <div style={{ display: "grid", gridTemplateColumns: "100px repeat(7, 1fr)", background: "#FFF0F5", borderBottom: "2px solid #FFD9E8" }}>
                 <div style={{ padding: "12px", fontWeight: 700, fontSize: 11, color: "#D4789F" }}>キャスト</div>
                 {dates.map((d, i) => {
@@ -418,6 +419,7 @@ export default function CabShift() {
                   );
                 })}
               </div>
+            </div>
             </div>
             </div>
             )}
