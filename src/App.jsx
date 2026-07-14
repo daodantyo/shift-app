@@ -80,6 +80,8 @@ export default function CabShift() {
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [detailModal, setDetailModal] = useState(null);
+  const [expandedStatCastId, setExpandedStatCastId] = useState(null);
+  const [statEditDateStr, setStatEditDateStr] = useState(null);
 
   // Load from Firebase
   useEffect(() => {
@@ -531,30 +533,101 @@ export default function CabShift() {
                   <div style={{ fontSize: 36 }}>💎</div>
                 </div>
                 <div style={{ background: "#fff", borderRadius: 14, padding: 16, marginBottom: 16 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: "#5C3344", marginBottom: 12 }}>キャスト週間成績</div>
-                  {[...cast].sort((a, b) => totalStat(b.id, "sales") - totalStat(a.id, "sales")).map((member) => (
-                    <div key={member.id} style={{ background: "#FFF5F8", borderRadius: 10, padding: "10px 14px", marginBottom: 8 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                        <div style={{ width: 32, height: 32, borderRadius: "50%", background: `linear-gradient(135deg, ${rankColor(member.rank)}, #FF8FAB)`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 13 }}>{member.name[0]}</div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 700, fontSize: 13 }}>{member.name}</div>
-                          <div style={{ fontSize: 10, color: rankColor(member.rank), fontWeight: 700 }}>{member.rank}</div>
-                        </div>
-                        <div style={{ textAlign: "right" }}>
-                          <div style={{ fontWeight: 800, fontSize: 15, color: "#FF6B9D" }}>{formatYen(totalStat(member.id, "sales"))}</div>
-                          <div style={{ fontSize: 9, color: "#D4789F" }}>個人売上</div>
-                        </div>
-                      </div>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        {[{ key: "douhan", label: "本指名", color: "#FF6B6B" }, { key: "shimei", label: "姫指名", color: "#FFC93C" }, { key: "drink", label: "雑費", color: "#5DC9E2" }].map(({ key, label, color }) => (
-                          <div key={key} style={{ textAlign: "center", background: `${color}22`, borderRadius: 8, padding: "4px 10px" }}>
-                            <div style={{ fontSize: 16, fontWeight: 800, color }}>{totalStat(member.id, key)}</div>
-                            <div style={{ fontSize: 9, color: "#D4789F" }}>{label}</div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: "#5C3344", marginBottom: 4 }}>キャスト週間成績</div>
+                  <div style={{ fontSize: 11, color: "#D4789F", marginBottom: 12 }}>キャストをタップすると、その場で日ごとの数値を入力できます</div>
+                  {[...cast].sort((a, b) => totalStat(b.id, "sales") - totalStat(a.id, "sales")).map((member) => {
+                    const isExpanded = expandedStatCastId === member.id;
+                    const editDateStr = isExpanded ? (statEditDateStr || dates[0].toDateString()) : null;
+                    const editStat = isExpanded ? getStat(member.id, editDateStr) : null;
+                    return (
+                      <div key={member.id} style={{ background: "#FFF5F8", borderRadius: 10, padding: "10px 14px", marginBottom: 8 }}>
+                        <div
+                          onClick={() => {
+                            if (isExpanded) {
+                              setExpandedStatCastId(null);
+                            } else {
+                              setExpandedStatCastId(member.id);
+                              setStatEditDateStr(dates[0].toDateString());
+                            }
+                          }}
+                          style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, cursor: "pointer" }}
+                        >
+                          <div style={{ width: 32, height: 32, borderRadius: "50%", background: `linear-gradient(135deg, ${rankColor(member.rank)}, #FF8FAB)`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 13 }}>{member.name[0]}</div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 700, fontSize: 13 }}>{member.name}</div>
+                            <div style={{ fontSize: 10, color: rankColor(member.rank), fontWeight: 700 }}>{member.rank}</div>
                           </div>
-                        ))}
+                          <div style={{ textAlign: "right" }}>
+                            <div style={{ fontWeight: 800, fontSize: 15, color: "#FF6B9D" }}>{formatYen(totalStat(member.id, "sales"))}</div>
+                            <div style={{ fontSize: 9, color: "#D4789F" }}>個人売上</div>
+                          </div>
+                          <div style={{ fontSize: 16, color: "#D4789F" }}>{isExpanded ? "▲" : "▼"}</div>
+                        </div>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          {[{ key: "douhan", label: "本指名", color: "#FF6B6B" }, { key: "shimei", label: "姫指名", color: "#FFC93C" }, { key: "drink", label: "雑費", color: "#5DC9E2" }].map(({ key, label, color }) => (
+                            <div key={key} style={{ textAlign: "center", background: `${color}22`, borderRadius: 8, padding: "4px 10px" }}>
+                              <div style={{ fontSize: 16, fontWeight: 800, color }}>{totalStat(member.id, key)}</div>
+                              <div style={{ fontSize: 9, color: "#D4789F" }}>{label}</div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {isExpanded && (
+                          <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #FFD9E8" }} onClick={(e) => e.stopPropagation()}>
+                            <div style={{ display: "flex", gap: 4, marginBottom: 10, flexWrap: "wrap" }}>
+                              {dates.map((d, di) => {
+                                const ds = d.toDateString();
+                                const active = ds === editDateStr;
+                                return (
+                                  <button
+                                    key={di}
+                                    onClick={() => setStatEditDateStr(ds)}
+                                    style={{
+                                      border: "none",
+                                      borderRadius: 8,
+                                      padding: "6px 8px",
+                                      fontSize: 11,
+                                      fontWeight: 700,
+                                      cursor: "pointer",
+                                      background: active ? "linear-gradient(135deg, #FF8FAB, #FF6B9D)" : "#fff",
+                                      color: active ? "#fff" : "#D4789F",
+                                    }}
+                                  >
+                                    {DAYS[di]} {d.getMonth() + 1}/{d.getDate()}
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            {[{ key: "douhan", label: "本指名", color: "#FF6B6B", emoji: "💖" }, { key: "shimei", label: "姫指名", color: "#FFC93C", emoji: "⭐" }, { key: "drink", label: "雑費", color: "#5DC9E2", emoji: "💰" }].map(({ key, label, color, emoji }) => (
+                              <div key={key} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                                <div style={{ fontSize: 16 }}>{emoji}</div>
+                                <div style={{ flex: 1, fontWeight: 600, fontSize: 13 }}>{label}</div>
+                                <button onClick={() => updateStat(member.id, editDateStr, { [key]: Math.max(0, (editStat[key] || 0) - 1) })} style={{ width: 28, height: 28, border: "none", borderRadius: 8, background: "#fff", color: "#5C3344", fontSize: 16, cursor: "pointer", fontWeight: 700 }}>－</button>
+                                <div style={{ width: 28, textAlign: "center", fontWeight: 800, fontSize: 16, color }}>{editStat[key] || 0}</div>
+                                <button onClick={() => updateStat(member.id, editDateStr, { [key]: (editStat[key] || 0) + 1 })} style={{ width: 28, height: 28, border: "none", borderRadius: 8, background: color, color: "#fff", fontSize: 16, cursor: "pointer", fontWeight: 700 }}>＋</button>
+                              </div>
+                            ))}
+
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <div style={{ fontSize: 16 }}>💴</div>
+                              <div style={{ flex: 1, fontWeight: 600, fontSize: 13 }}>個人売上</div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 4, background: "#fff", borderRadius: 8, padding: "6px 10px", border: "1.5px solid #FFD9E8" }}>
+                                <span style={{ fontSize: 13, fontWeight: 700, color: "#FFB6D5" }}>¥</span>
+                                <input
+                                  type="number"
+                                  placeholder="0"
+                                  value={editStat.sales || ""}
+                                  onChange={(e) => updateStat(member.id, editDateStr, { sales: e.target.value })}
+                                  style={{ width: 90, border: "none", background: "transparent", fontSize: 14, fontWeight: 700, color: "#5C3344", outline: "none" }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 {dates.map((d, i) => {
                   const dateStr = d.toDateString();
