@@ -5,6 +5,18 @@ import { ref, push, onValue } from "firebase/database";
 
 const DAYS = ["月", "火", "水", "木", "金", "土", "日"];
 
+// 黒地に白い線が交差する背景デザイン(App.jsxと共通デザイン)
+const DARK_LINE_BG = {
+  background:
+    "linear-gradient(115deg, transparent 48%, rgba(255,255,255,0.10) 48.4%, rgba(255,255,255,0.10) 48.9%, transparent 49.3%)," +
+    "linear-gradient(25deg, transparent 22%, rgba(255,255,255,0.07) 22.4%, rgba(255,255,255,0.07) 22.8%, transparent 23.2%)," +
+    "linear-gradient(200deg, transparent 55%, rgba(255,255,255,0.08) 55.4%, rgba(255,255,255,0.08) 55.8%, transparent 56.2%)," +
+    "linear-gradient(70deg, transparent 78%, rgba(255,255,255,0.06) 78.4%, rgba(255,255,255,0.06) 78.7%, transparent 79.1%)," +
+    "linear-gradient(160deg, transparent 12%, rgba(255,255,255,0.05) 12.3%, rgba(255,255,255,0.05) 12.6%, transparent 13%)," +
+    "#0a0a0c",
+  backgroundAttachment: "fixed",
+};
+
 // ↓ LINE Developersコンソールで発行したLIFF IDに置き換えてください
 const LIFF_ID = "2010692487-HEfxObPq";
 
@@ -117,7 +129,7 @@ export default function ShiftRequestForm() {
 
   if (!ready) {
     return (
-      <div style={{ padding: 60, textAlign: "center", color: "#D4789F" }}>
+      <div style={{ minHeight: "100vh", padding: 60, textAlign: "center", color: "#D4789F", ...DARK_LINE_BG }}>
         読み込み中...
       </div>
     );
@@ -127,11 +139,13 @@ export default function ShiftRequestForm() {
     return (
       <div
         style={{
+          minHeight: "100vh",
           padding: 60,
           textAlign: "center",
           fontWeight: 700,
           fontSize: 18,
           color: "#FF6B9D",
+          ...DARK_LINE_BG,
         }}
       >
         🌸 希望シフトを送信しました!
@@ -144,7 +158,7 @@ export default function ShiftRequestForm() {
       style={{
         fontFamily: "'Segoe UI','Noto Sans JP',sans-serif",
         minHeight: "100vh",
-        background: "#FFF5F8",
+        ...DARK_LINE_BG,
         padding: 20,
       }}
     >
