@@ -374,6 +374,7 @@ export default function ShiftRequestForm() {
               <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                 <input
                   type="time"
+                  step="1800"
                   value={entry.in || ""}
                   onChange={(e) => updateEntry(dateStr, { in: e.target.value })}
                   style={{
@@ -386,6 +387,7 @@ export default function ShiftRequestForm() {
                 <span style={{ alignSelf: "center" }}>〜</span>
                 <input
                   type="time"
+                  step="1800"
                   value={entry.out || ""}
                   onChange={(e) => updateEntry(dateStr, { out: e.target.value })}
                   style={{
