@@ -99,6 +99,16 @@ export default function ShiftRequestForm() {
     return () => unsub();
   }, []);
 
+  useEffect(() => {
+    const settingsRef = ref(db, "shiftapp/settings");
+    const unsub = onValue(settingsRef, (snap) => {
+      const data = snap.val();
+      // 未設定の場合は表示する(true)がデフォルト
+      setShowConfirmedShifts(data && data.showConfirmedShifts === false ? false : true);
+    });
+    return () => unsub();
+  }, []);
+
   const getConfirmedShift = (castId, dateStr) =>
     (confirmedShifts[castId] || {})[dateStr] || { status: "off", in: "", out: "" };
 
@@ -167,15 +177,13 @@ export default function ShiftRequestForm() {
         希望シフト提出
       </h2>
 
+      {showConfirmedShifts && (
       <div style={{ marginBottom: 16 }}>
         <div
-          onClick={() => setShowConfirmedShifts((v) => !v)}
-          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontWeight: 700, color: "#5C3344", fontSize: 13, marginBottom: 6, cursor: "pointer" }}
+          style={{ fontWeight: 700, color: "#5C3344", fontSize: 13, marginBottom: 6 }}
         >
-          <span>🌸 現在のシフト表(確定分)</span>
-          <span style={{ fontSize: 12, color: "#D4789F" }}>{showConfirmedShifts ? "▲ 閉じる" : "▼ 表示する"}</span>
+          🌸 現在のシフト表(確定分)
         </div>
-        {showConfirmedShifts && (
         <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 6 }}>
           {dates.map((d, i) => {
             const dateStr = d.toDateString();
@@ -226,8 +234,8 @@ export default function ShiftRequestForm() {
             );
           })}
         </div>
-        )}
       </div>
+      )}
       {false && profile && (
         <div
           style={{
