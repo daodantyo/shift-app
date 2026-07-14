@@ -12,6 +12,18 @@ const INITIAL_CAST = [
 const RANKS = ["ナンバー1", "幹部", "キャスト", "体験入店"];
 const RANK_COLORS = { "ナンバー1": "#f1c40f", "幹部": "#e67e22", "キャスト": "#9b59b6", "体験入店": "#95a5a6" };
 
+// 黒地に白い線が交差する背景デザイン
+const DARK_LINE_BG = {
+  background:
+    "linear-gradient(115deg, transparent 48%, rgba(255,255,255,0.10) 48.4%, rgba(255,255,255,0.10) 48.9%, transparent 49.3%)," +
+    "linear-gradient(25deg, transparent 22%, rgba(255,255,255,0.07) 22.4%, rgba(255,255,255,0.07) 22.8%, transparent 23.2%)," +
+    "linear-gradient(200deg, transparent 55%, rgba(255,255,255,0.08) 55.4%, rgba(255,255,255,0.08) 55.8%, transparent 56.2%)," +
+    "linear-gradient(70deg, transparent 78%, rgba(255,255,255,0.06) 78.4%, rgba(255,255,255,0.06) 78.7%, transparent 79.1%)," +
+    "linear-gradient(160deg, transparent 12%, rgba(255,255,255,0.05) 12.3%, rgba(255,255,255,0.05) 12.6%, transparent 13%)," +
+    "#0a0a0c",
+  backgroundAttachment: "fixed",
+};
+
 function getWeekDates(offset = 0) {
   const now = new Date();
   const day = now.getDay();
@@ -240,7 +252,7 @@ export default function CabShift() {
   // スタッフ向け:シフトを見るだけの画面(編集不可・パスワード不要)
   if (isViewPage) {
     return (
-      <div style={{ fontFamily: "'Segoe UI','Noto Sans JP',sans-serif", minHeight: "100vh", background: "#FFF5F8", color: "#5C3344", padding: 16 }}>
+      <div style={{ fontFamily: "'Segoe UI','Noto Sans JP',sans-serif", minHeight: "100vh", ...DARK_LINE_BG, color: "#5C3344", padding: 16 }}>
         <div style={{ textAlign: "center", fontWeight: 700, fontSize: 18, marginBottom: 16, color: "#5C3344" }}>🌸 シフト表</div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, maxWidth: 500, margin: "0 auto 16px" }}>
           <button onClick={() => setWeekOffset((w) => w - 1)} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}>← 前週</button>
@@ -289,7 +301,7 @@ export default function CabShift() {
 
   if (!unlocked) {
     return (
-      <div style={{ fontFamily: "'Segoe UI','Noto Sans JP',sans-serif", minHeight: "100vh", background: "#FFF5F8", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
+      <div style={{ fontFamily: "'Segoe UI','Noto Sans JP',sans-serif", minHeight: "100vh", ...DARK_LINE_BG, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
         <div style={{ fontSize: 40 }}>🔒</div>
         <div style={{ color: "#5C3344", fontWeight: 700, fontSize: 18 }}>管理画面ログイン</div>
         <input
@@ -313,14 +325,14 @@ export default function CabShift() {
   }
 
   if (loading) return (
-    <div style={{ fontFamily: "'Segoe UI','Noto Sans JP',sans-serif", minHeight: "100vh", background: "#FFF5F8", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12 }}>
+    <div style={{ fontFamily: "'Segoe UI','Noto Sans JP',sans-serif", minHeight: "100vh", ...DARK_LINE_BG, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12 }}>
       <div style={{ fontSize: 40 }}>🌸</div>
       <div style={{ color: "#D4789F", fontWeight: 700 }}>読み込み中...</div>
     </div>
   );
 
   return (
-    <div style={{ fontFamily: "'Segoe UI','Noto Sans JP',sans-serif", minHeight: "100vh", background: "#FFF5F8", color: "#5C3344" }}>
+    <div style={{ fontFamily: "'Segoe UI','Noto Sans JP',sans-serif", minHeight: "100vh", ...DARK_LINE_BG, color: "#5C3344" }}>
       <div style={{ background: "linear-gradient(135deg, #FFD1E3 0%, #FFB6D5 100%)", padding: "20px 24px 0", boxShadow: "0 2px 20px rgba(255,182,213,0.4)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
           <div style={{ width: 38, height: 38, borderRadius: 12, background: "linear-gradient(135deg, #FF8FAB, #FFB6D5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>🌸</div>
