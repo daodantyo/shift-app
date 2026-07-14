@@ -20,6 +20,37 @@ const DARK_LINE_BG = {
 // ↓ LINE Developersコンソールで発行したLIFF IDに置き換えてください
 const LIFF_ID = "2010692487-HEfxObPq";
 
+function TimeSelect({ value, onChange }) {
+  const [h, m] = (value || "").split(":");
+  const hour = h || "";
+  const minute = m || "";
+  const setHour = (newH) => onChange(newH && minute ? `${newH}:${minute}` : newH ? `${newH}:00` : "");
+  const setMinute = (newM) => onChange(hour ? `${hour}:${newM}` : "");
+  const selectStyle = {
+    flex: 1,
+    padding: 8,
+    borderRadius: 8,
+    border: "1px solid #FFD9E8",
+    background: "#fff",
+    fontSize: 14,
+  };
+  return (
+    <div style={{ display: "flex", gap: 4, flex: 1 }}>
+      <select value={hour} onChange={(e) => setHour(e.target.value)} style={selectStyle}>
+        <option value="">--</option>
+        {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0")).map((hh) => (
+          <option key={hh} value={hh}>{hh}</option>
+        ))}
+      </select>
+      <select value={minute} onChange={(e) => setMinute(e.target.value)} style={selectStyle}>
+        <option value="">--</option>
+        <option value="00">00</option>
+        <option value="30">30</option>
+      </select>
+    </div>
+  );
+}
+
 function getWeekDates(offset = 0) {
   const now = new Date();
   const day = now.getDay();
@@ -372,31 +403,9 @@ export default function ShiftRequestForm() {
             </div>
             {isWork && (
               <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                <input
-                  type="time"
-                  step="1800"
-                  value={entry.in || ""}
-                  onChange={(e) => updateEntry(dateStr, { in: e.target.value })}
-                  style={{
-                    flex: 1,
-                    padding: 8,
-                    borderRadius: 8,
-                    border: "1px solid #FFD9E8",
-                  }}
-                />
+                <TimeSelect value={entry.in || ""} onChange={(v) => updateEntry(dateStr, { in: v })} />
                 <span style={{ alignSelf: "center" }}>〜</span>
-                <input
-                  type="time"
-                  step="1800"
-                  value={entry.out || ""}
-                  onChange={(e) => updateEntry(dateStr, { out: e.target.value })}
-                  style={{
-                    flex: 1,
-                    padding: 8,
-                    borderRadius: 8,
-                    border: "1px solid #FFD9E8",
-                  }}
-                />
+                <TimeSelect value={entry.out || ""} onChange={(v) => updateEntry(dateStr, { out: v })} />
               </div>
             )}
           </div>
