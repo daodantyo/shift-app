@@ -875,9 +875,7 @@ export default function CabShift() {
                 <div style={{ fontWeight: 700, marginBottom: 12, color: "#FF6B9D" }}>新しいキャストを追加</div>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <input placeholder="源氏名" value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addCast()} style={{ flex: 1, minWidth: 140, border: "1.5px solid #FFD9E8", borderRadius: 8, padding: "10px 14px", fontSize: 14, outline: "none" }} />
-                  <select value={newRank} onChange={(e) => setNewRank(e.target.value)} style={{ border: "1.5px solid #FFD9E8", borderRadius: 8, padding: "10px 14px", fontSize: 14, outline: "none", background: "#fff" }}>
-                    {RANKS.map((r) => <option key={r}>{r}</option>)}
-                  </select>
+                  <input placeholder="ランク(自由入力)" value={newRank} onChange={(e) => setNewRank(e.target.value)} style={{ border: "1.5px solid #FFD9E8", borderRadius: 8, padding: "10px 14px", fontSize: 14, outline: "none", background: "#fff", minWidth: 120 }} />
                   <button onClick={addCast} style={{ background: "#FF8FAB", color: "#fff", border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 700, cursor: "pointer" }}>追加</button>
                   <button onClick={() => setShowAddForm(false)} style={{ background: "#FFF0F5", color: "#D4789F", border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 600, cursor: "pointer" }}>キャンセル</button>
                 </div>
@@ -889,9 +887,7 @@ export default function CabShift() {
                 {editingCast?.id === member.id ? (
                   <div style={{ flex: 1, display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <input value={editingCast.name} onChange={(e) => setEditingCast({ ...editingCast, name: e.target.value })} style={{ flex: 1, minWidth: 120, border: "1.5px solid #FF8FAB", borderRadius: 8, padding: "8px 12px", fontSize: 14, outline: "none" }} />
-                    <select value={editingCast.rank} onChange={(e) => setEditingCast({ ...editingCast, rank: e.target.value })} style={{ border: "1.5px solid #FFD9E8", borderRadius: 8, padding: "8px 12px", fontSize: 14, outline: "none", background: "#fff" }}>
-                      {RANKS.map((r) => <option key={r}>{r}</option>)}
-                    </select>
+                    <input placeholder="ランク(自由入力)" value={editingCast.rank} onChange={(e) => setEditingCast({ ...editingCast, rank: e.target.value })} style={{ border: "1.5px solid #FFD9E8", borderRadius: 8, padding: "8px 12px", fontSize: 14, outline: "none", background: "#fff", minWidth: 120 }} />
                     <button onClick={saveEdit} style={{ background: "#FF8FAB", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontWeight: 700, cursor: "pointer" }}>保存</button>
                     <button onClick={() => setEditingCast(null)} style={{ background: "#FFF0F5", color: "#D4789F", border: "none", borderRadius: 8, padding: "8px 16px", fontWeight: 600, cursor: "pointer" }}>キャンセル</button>
                   </div>
