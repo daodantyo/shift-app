@@ -186,11 +186,21 @@ export default function ShiftRequestForm() {
                 {working.length === 0 ? (
                   <div style={{ textAlign: "center", fontSize: 8, color: "#FFB6D5" }}>なし</div>
                 ) : (
-                  working.map((c) => (
-                    <div key={c.id} style={{ fontSize: 9, fontWeight: 700, color: "#5C3344", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {c.name}
-                    </div>
-                  ))
+                  working.map((c) => {
+                    const s = getConfirmedShift(c.id, dateStr);
+                    return (
+                      <div key={c.id} style={{ marginBottom: 2 }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: "#5C3344", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {c.name}
+                        </div>
+                        {s.in && (
+                          <div style={{ fontSize: 8, color: "#D4789F", textAlign: "center" }}>
+                            {s.in}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
                 )}
               </div>
             );
