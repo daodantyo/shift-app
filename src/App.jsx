@@ -84,6 +84,7 @@ export default function CabShift() {
   const [sales, setSales] = useState({});
   const [stats, setStats] = useState({});
   const [expenses, setExpenses] = useState({});
+  const [settings, setSettings] = useState({ showConfirmedShifts: true });
   const [requests, setRequests] = useState({});
   const [newName, setNewName] = useState("");
   const [newRank, setNewRank] = useState("キャスト");
@@ -106,6 +107,7 @@ export default function CabShift() {
         if (data.sales) setSales(data.sales);
         if (data.stats) setStats(data.stats);
         if (data.expenses) setExpenses(data.expenses);
+        if (data.settings) setSettings((s) => ({ ...s, ...data.settings }));
       }
       setLoading(false);
     });
@@ -128,11 +130,12 @@ export default function CabShift() {
     });
   };
 
-  const updateCast = (newCast) => { setCast(newCast); saveToFirebase({ cast: newCast, shifts, sales, stats, expenses }); };
-  const updateShifts = (newShifts) => { setShifts(newShifts); saveToFirebase({ cast, shifts: newShifts, sales, stats, expenses }); };
-  const updateSales = (newSales) => { setSales(newSales); saveToFirebase({ cast, shifts, sales: newSales, stats, expenses }); };
-  const updateStats = (newStats) => { setStats(newStats); saveToFirebase({ cast, shifts, sales, stats: newStats, expenses }); };
-  const updateExpenses = (newExpenses) => { setExpenses(newExpenses); saveToFirebase({ cast, shifts, sales, stats, expenses: newExpenses }); };
+  const updateCast = (newCast) => { setCast(newCast); saveToFirebase({ cast: newCast, shifts, sales, stats, expenses, settings }); };
+  const updateShifts = (newShifts) => { setShifts(newShifts); saveToFirebase({ cast, shifts: newShifts, sales, stats, expenses, settings }); };
+  const updateSales = (newSales) => { setSales(newSales); saveToFirebase({ cast, shifts, sales: newSales, stats, expenses, settings }); };
+  const updateStats = (newStats) => { setStats(newStats); saveToFirebase({ cast, shifts, sales, stats: newStats, expenses, settings }); };
+  const updateExpenses = (newExpenses) => { setExpenses(newExpenses); saveToFirebase({ cast, shifts, sales, stats, expenses: newExpenses, settings }); };
+  const updateSettings = (newSettings) => { setSettings(newSettings); saveToFirebase({ cast, shifts, sales, stats, expenses, settings: newSettings }); };
 
   const getExpenseList = (dateStr) => {
     const obj = expenses[dateStr] || {};
@@ -228,7 +231,7 @@ export default function CabShift() {
       };
     });
     setShifts(newShifts);
-    saveToFirebase({ cast, shifts: newShifts, sales, stats, expenses });
+    saveToFirebase({ cast, shifts: newShifts, sales, stats, expenses, settings });
     update(ref(db, `shiftRequests/${key}`), { status: "approved" });
   };
 
@@ -882,6 +885,42 @@ export default function CabShift() {
         {tab === "requests" && (
           <div>
             <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>LINEからの希望シフト</div>
+
+            <div style={{ background: "#fff", borderRadius: 14, padding: "14px 18px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 13, color: "#5C3344" }}>LINE提出画面に確定シフト表を表示</div>
+                <div style={{ fontSize: 11, color: "#D4789F", marginTop: 2 }}>キャストの希望提出画面で、確定済みシフトを見せるかどうかです</div>
+              </div>
+              <button
+                onClick={() => updateSettings({ ...settings, showConfirmedShifts: !settings.showConfirmedShifts })}
+                style={{
+                  width: 52,
+                  height: 30,
+                  borderRadius: 20,
+                  border: "none",
+                  cursor: "pointer",
+                  background: settings.showConfirmedShifts ? "linear-gradient(135deg, #FF8FAB, #FF6B9D)" : "#e0e0e0",
+                  position: "relative",
+                  flexShrink: 0,
+                  marginLeft: 12,
+                }}
+              >
+                <div
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: "50%",
+                    background: "#fff",
+                    position: "absolute",
+                    top: 3,
+                    left: settings.showConfirmedShifts ? 25 : 3,
+                    transition: "left 0.15s",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+                  }}
+                />
+              </button>
+            </div>
+
             {pendingRequests.length === 0 && (
               <div style={{ textAlign: "center", color: "#D4789F", padding: 40, background: "#fff", borderRadius: 14 }}>
                 現在、届いている希望シフトはありません
