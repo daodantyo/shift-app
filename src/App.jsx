@@ -71,6 +71,7 @@ export default function CabShift() {
   const [shifts, setShifts] = useState({});
   const [sales, setSales] = useState({});
   const [stats, setStats] = useState({});
+  const [expenses, setExpenses] = useState({});
   const [requests, setRequests] = useState({});
   const [newName, setNewName] = useState("");
   const [newRank, setNewRank] = useState("キャスト");
@@ -90,6 +91,7 @@ export default function CabShift() {
         if (data.shifts) setShifts(data.shifts);
         if (data.sales) setSales(data.sales);
         if (data.stats) setStats(data.stats);
+        if (data.expenses) setExpenses(data.expenses);
       }
       setLoading(false);
     });
@@ -112,10 +114,39 @@ export default function CabShift() {
     });
   };
 
-  const updateCast = (newCast) => { setCast(newCast); saveToFirebase({ cast: newCast, shifts, sales, stats }); };
-  const updateShifts = (newShifts) => { setShifts(newShifts); saveToFirebase({ cast, shifts: newShifts, sales, stats }); };
-  const updateSales = (newSales) => { setSales(newSales); saveToFirebase({ cast, shifts, sales: newSales, stats }); };
-  const updateStats = (newStats) => { setStats(newStats); saveToFirebase({ cast, shifts, sales, stats: newStats }); };
+  const updateCast = (newCast) => { setCast(newCast); saveToFirebase({ cast: newCast, shifts, sales, stats, expenses }); };
+  const updateShifts = (newShifts) => { setShifts(newShifts); saveToFirebase({ cast, shifts: newShifts, sales, stats, expenses }); };
+  const updateSales = (newSales) => { setSales(newSales); saveToFirebase({ cast, shifts, sales: newSales, stats, expenses }); };
+  const updateStats = (newStats) => { setStats(newStats); saveToFirebase({ cast, shifts, sales, stats: newStats, expenses }); };
+  const updateExpenses = (newExpenses) => { setExpenses(newExpenses); saveToFirebase({ cast, shifts, sales, stats, expenses: newExpenses }); };
+
+  const getExpenseList = (dateStr) => {
+    const obj = expenses[dateStr] || {};
+    return Object.keys(obj).map((id) => {
+      const item = obj[id] || {};
+      return { id: id, category: item.category, amount: item.amount };
+    });
+  };
+
+  const addExpense = (dateStr) => {
+    const id = "e" + Date.now();
+    const newExpenses = { ...expenses, [dateStr]: { ...(expenses[dateStr] || {}), [id]: { category: "", amount: "" } } };
+    updateExpenses(newExpenses);
+  };
+
+  const updateExpense = (dateStr, id, patch) => {
+    const newExpenses = {
+      ...expenses,
+      [dateStr]: { ...(expenses[dateStr] || {}), [id]: { ...((expenses[dateStr] || {})[id] || {}), ...patch } },
+    };
+    updateExpenses(newExpenses);
+  };
+
+  const removeExpense = (dateStr, id) => {
+    const dayExpenses = { ...(expenses[dateStr] || {}) };
+    delete dayExpenses[id];
+    updateExpenses({ ...expenses, [dateStr]: dayExpenses });
+  };
 
   const getShift = (castId, dateStr) => (shifts[castId] || {})[dateStr] || { status: "off", in: "", out: "" };
   const getStat = (castId, dateStr) => (stats[castId] || {})[dateStr] || { douhan: 0, shimei: 0, drink: 0 };
@@ -183,7 +214,7 @@ export default function CabShift() {
       };
     });
     setShifts(newShifts);
-    saveToFirebase({ cast, shifts: newShifts, sales, stats });
+    saveToFirebase({ cast, shifts: newShifts, sales, stats, expenses });
     update(ref(db, `shiftRequests/${key}`), { status: "approved" });
   };
 
@@ -298,7 +329,7 @@ export default function CabShift() {
           {saved && <div style={{ background: "#6BCB77", color: "#fff", borderRadius: 20, padding: "4px 14px", fontSize: 12, fontWeight: 700 }}>☁️ 保存済み</div>}
         </div>
         <div style={{ display: "flex", flexWrap: "wrap" }}>
-          {[{ id: "shift", label: "シフト" }, { id: "sales", label: "売上" }, { id: "summary", label: "集計" }, { id: "cast", label: "キャスト" }, { id: "requests", label: `希望シフト${pendingRequests.length ? ` (${pendingRequests.length})` : ""}` }].map((t) => (
+          {[{ id: "shift", label: "シフト" }, { id: "sales", label: "売上" }, { id: "expenses", label: "経費" }, { id: "summary", label: "集計" }, { id: "cast", label: "キャスト" }, { id: "requests", label: `希望シフト${pendingRequests.length ? ` (${pendingRequests.length})` : ""}` }].map((t) => (
             <button key={t.id} onClick={() => setTab(t.id)} style={{ padding: "10px 20px", border: "none", cursor: "pointer", fontWeight: 600, fontSize: 14, borderRadius: "8px 8px 0 0", background: tab === t.id ? "#FFF5F8" : "transparent", color: tab === t.id ? "#5C3344" : "#D4789F" }}>{t.label}</button>
           ))}
         </div>
@@ -501,12 +532,18 @@ export default function CabShift() {
                 </div>
                 <div style={{ background: "#fff", borderRadius: 14, padding: 16, marginBottom: 16 }}>
                   <div style={{ fontWeight: 700, fontSize: 14, color: "#5C3344", marginBottom: 12 }}>キャスト週間成績</div>
-                  {[...cast].sort((a, b) => totalStat(b.id, "shimei") - totalStat(a.id, "shimei")).map((member) => (
-                    <div key={member.id} style={{ display: "flex", alignItems: "center", gap: 10, background: "#FFF5F8", borderRadius: 10, padding: "10px 14px", marginBottom: 8 }}>
-                      <div style={{ width: 32, height: 32, borderRadius: "50%", background: `linear-gradient(135deg, ${rankColor(member.rank)}, #FF8FAB)`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 13 }}>{member.name[0]}</div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 700, fontSize: 13 }}>{member.name}</div>
-                        <div style={{ fontSize: 10, color: rankColor(member.rank), fontWeight: 700 }}>{member.rank}</div>
+                  {[...cast].sort((a, b) => totalStat(b.id, "sales") - totalStat(a.id, "sales")).map((member) => (
+                    <div key={member.id} style={{ background: "#FFF5F8", borderRadius: 10, padding: "10px 14px", marginBottom: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                        <div style={{ width: 32, height: 32, borderRadius: "50%", background: `linear-gradient(135deg, ${rankColor(member.rank)}, #FF8FAB)`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 13 }}>{member.name[0]}</div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13 }}>{member.name}</div>
+                          <div style={{ fontSize: 10, color: rankColor(member.rank), fontWeight: 700 }}>{member.rank}</div>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <div style={{ fontWeight: 800, fontSize: 15, color: "#FF6B9D" }}>{formatYen(totalStat(member.id, "sales"))}</div>
+                          <div style={{ fontSize: 9, color: "#D4789F" }}>個人売上</div>
+                        </div>
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
                         {[{ key: "douhan", label: "本指名", color: "#FF6B6B" }, { key: "shimei", label: "姫指名", color: "#FFC93C" }, { key: "drink", label: "雑費", color: "#5DC9E2" }].map(({ key, label, color }) => (
@@ -598,6 +635,71 @@ export default function CabShift() {
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {tab === "expenses" && (
+          <div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <button onClick={() => setWeekOffset((w) => w - 1)} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}>← 前週</button>
+              <div style={{ fontWeight: 700, fontSize: 15 }}>{formatDate(dates[0])} 〜 {formatDate(dates[6])}</div>
+              <button onClick={() => setWeekOffset((w) => w + 1)} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}>次週 →</button>
+            </div>
+
+            {(() => {
+              const weekExpenseTotal = dates.reduce((sum, d) => sum + getExpenseList(d.toDateString()).reduce((s, e) => s + (Number(e.amount) || 0), 0), 0);
+              return (
+                <div style={{ background: "linear-gradient(135deg, #B6C9FF, #8FA8FF)", borderRadius: 14, padding: "20px 24px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div>
+                    <div style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>週間経費合計</div>
+                    <div style={{ color: "#fff", fontSize: 28, fontWeight: 800, marginTop: 4 }}>{formatYen(weekExpenseTotal)}</div>
+                  </div>
+                  <div style={{ fontSize: 36 }}>🧾</div>
+                </div>
+              );
+            })()}
+
+            {dates.map((d, i) => {
+              const dateStr = d.toDateString();
+              const isWeekend = i >= 5;
+              const isToday = d.toDateString() === new Date().toDateString();
+              const list = getExpenseList(dateStr);
+              const dayTotal = list.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+              return (
+                <div key={i} style={{ background: "#fff", borderRadius: 14, padding: "14px 18px", marginBottom: 10, border: isToday ? "2px solid #FFC93C" : "2px solid transparent" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: list.length ? 10 : 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: isWeekend ? "#FF4D8D" : "#D4789F" }}>{DAYS[i]}</div>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: isToday ? "#FFC93C" : "#5C3344" }}>{formatDate(d)}</div>
+                      {dayTotal > 0 && <div style={{ fontSize: 12, color: "#8FA8FF", fontWeight: 700 }}>計 {formatYen(dayTotal)}</div>}
+                    </div>
+                    <button onClick={() => addExpense(dateStr)} style={{ background: "#EEF1FF", color: "#7B8FE8", border: "none", borderRadius: 8, padding: "6px 12px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                      + 追加
+                    </button>
+                  </div>
+                  {list.map((e) => (
+                    <div key={e.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
+                      <input
+                        placeholder="費目(例: 備品)"
+                        value={e.category || ""}
+                        onChange={(ev) => updateExpense(dateStr, e.id, { category: ev.target.value })}
+                        style={{ flex: 1, border: "1px solid #E0E4FF", borderRadius: 8, padding: "8px 10px", fontSize: 13, outline: "none" }}
+                      />
+                      <input
+                        type="number"
+                        placeholder="金額"
+                        value={e.amount || ""}
+                        onChange={(ev) => updateExpense(dateStr, e.id, { amount: ev.target.value })}
+                        style={{ width: 100, border: "1px solid #E0E4FF", borderRadius: 8, padding: "8px 10px", fontSize: 13, outline: "none" }}
+                      />
+                      <button onClick={() => removeExpense(dateStr, e.id)} style={{ background: "#fff0f0", border: "none", borderRadius: 8, padding: "8px 10px", color: "#FF6B6B", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>
+                        削除
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -768,6 +870,22 @@ export default function CabShift() {
                   <button onClick={() => updateStat(castId, dateStr, { [key]: (stat[key] || 0) + 1 })} style={{ width: 32, height: 32, border: "none", borderRadius: 8, background: color, color: "#fff", fontSize: 18, cursor: "pointer", fontWeight: 700 }}>＋</button>
                 </div>
               ))}
+              <div style={{ borderTop: "1px solid #FFF0F5", paddingTop: 14, marginTop: 4, marginBottom: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ fontSize: 20 }}>💴</div>
+                  <div style={{ flex: 1, fontWeight: 600 }}>個人売上</div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#FFF5F8", borderRadius: 10, padding: "8px 12px", border: "1.5px solid #FFD9E8", marginTop: 8 }}>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: "#FFB6D5" }}>¥</span>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={stat.sales || ""}
+                    onChange={(e) => updateStat(castId, dateStr, { sales: e.target.value })}
+                    style={{ flex: 1, border: "none", background: "transparent", fontSize: 16, fontWeight: 700, color: "#5C3344", outline: "none" }}
+                  />
+                </div>
+              </div>
               <button onClick={closeDetail} style={{ width: "100%", background: "linear-gradient(135deg, #FF8FAB, #FF6B9D)", color: "#fff", border: "none", borderRadius: 10, padding: "12px 0", fontWeight: 700, fontSize: 15, cursor: "pointer", marginTop: 8 }}>閉じる</button>
             </div>
           </div>
