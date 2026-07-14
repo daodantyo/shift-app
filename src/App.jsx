@@ -36,6 +36,39 @@ function getWeekDates(offset = 0) {
   });
 }
 
+function TimeSelect({ value, onChange, style }) {
+  const [h, m] = (value || "").split(":");
+  const hour = h || "";
+  const minute = m || "";
+  const setHour = (newH) => onChange(newH && minute ? `${newH}:${minute}` : newH ? `${newH}:00` : "");
+  const setMinute = (newM) => onChange(hour ? `${hour}:${newM}` : "");
+  const selectStyle = {
+    border: "1px solid #FFD9E8",
+    borderRadius: 5,
+    padding: "2px 2px",
+    fontSize: 10,
+    outline: "none",
+    color: "#5C3344",
+    background: "#fff",
+    ...style,
+  };
+  return (
+    <div style={{ display: "flex", gap: 2 }}>
+      <select value={hour} onChange={(e) => setHour(e.target.value)} style={{ ...selectStyle, flex: 1 }}>
+        <option value="">--</option>
+        {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0")).map((hh) => (
+          <option key={hh} value={hh}>{hh}</option>
+        ))}
+      </select>
+      <select value={minute} onChange={(e) => setMinute(e.target.value)} style={{ ...selectStyle, flex: 1 }}>
+        <option value="">--</option>
+        <option value="00">00</option>
+        <option value="30">30</option>
+      </select>
+    </div>
+  );
+}
+
 function calcHours(inTime, outTime) {
   if (!inTime || !outTime) return null;
   const [ih, im] = inTime.split(":").map(Number);
@@ -440,8 +473,8 @@ export default function CabShift() {
                           </button>
                           {!isOff && (
                             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                              <input type="time" step="1800" value={s.in || ""} onChange={(e) => updateShift(member.id, dateStr, { in: e.target.value })} style={{ width: "100%", border: "1px solid #FFD9E8", borderRadius: 5, padding: "2px 2px", fontSize: 10, outline: "none", color: "#5C3344" }} />
-                              <input type="time" step="1800" value={s.out || ""} onChange={(e) => updateShift(member.id, dateStr, { out: e.target.value })} style={{ width: "100%", border: "1px solid #FFD9E8", borderRadius: 5, padding: "2px 2px", fontSize: 10, outline: "none", color: "#5C3344" }} />
+                              <TimeSelect value={s.in || ""} onChange={(v) => updateShift(member.id, dateStr, { in: v })} style={{ width: "100%" }} />
+                              <TimeSelect value={s.out || ""} onChange={(v) => updateShift(member.id, dateStr, { out: v })} style={{ width: "100%" }} />
                               {hours && <div style={{ textAlign: "center", fontSize: 9, color: "#D4789F" }}>{hours}h</div>}
                               <button onClick={() => openDetail(member.id, dateStr)} style={{ background: "rgba(255,199,60,0.15)", border: "1px solid rgba(255,199,60,0.3)", borderRadius: 5, padding: "2px 0", fontSize: 9, color: "#FFC93C", cursor: "pointer", fontWeight: 700 }}>
                                 本{stat.douhan} 姫{stat.shimei} 💰{stat.drink}
@@ -505,9 +538,9 @@ export default function CabShift() {
                               </button>
                               {!isOff && (
                                 <>
-                                  <input type="time" step="1800" value={s.in || ""} onChange={(e) => updateShift(member.id, dateStr, { in: e.target.value })} style={{ border: "1px solid #FFD9E8", borderRadius: 5, padding: "2px 4px", fontSize: 11, outline: "none", color: "#5C3344", width: 84 }} />
+                                  <TimeSelect value={s.in || ""} onChange={(v) => updateShift(member.id, dateStr, { in: v })} style={{ width: 84 }} />
                                   <span style={{ fontSize: 11, color: "#D4789F" }}>〜</span>
-                                  <input type="time" step="1800" value={s.out || ""} onChange={(e) => updateShift(member.id, dateStr, { out: e.target.value })} style={{ border: "1px solid #FFD9E8", borderRadius: 5, padding: "2px 4px", fontSize: 11, outline: "none", color: "#5C3344", width: 84 }} />
+                                  <TimeSelect value={s.out || ""} onChange={(v) => updateShift(member.id, dateStr, { out: v })} style={{ width: 84 }} />
                                   {hours && <span style={{ fontSize: 10, color: "#D4789F" }}>{hours}h</span>}
                                 </>
                               )}
