@@ -225,7 +225,17 @@ export default function CabShift() {
   const formatDate = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
   const weekSales = dates.reduce((sum, d) => sum + (Number((sales[d.toDateString()] || {}).amount) || 0), 0);
   const totalStat = (castId, key) => dates.reduce((sum, d) => sum + (Number(getStat(castId, d.toDateString())[key]) || 0), 0);
-  const rankColor = (rank) => RANK_COLORS[rank] || "#888";
+  const rankColor = (rank) => {
+    if (RANK_COLORS[rank]) return RANK_COLORS[rank];
+    if (!rank) return "#888";
+    // 未登録のランク名は、文字列から自動で色を生成する(同じ名前なら常に同じ色)
+    let hash = 0;
+    for (let i = 0; i < rank.length; i++) {
+      hash = rank.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash) % 360;
+    return `hsl(${hue}, 65%, 55%)`;
+  };
   const [shiftView, setShiftView] = useState("week");
   const [salesView, setSalesView] = useState("week");
   const [summaryMonth, setSummaryMonth] = useState(new Date().getMonth());
