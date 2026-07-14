@@ -51,6 +51,7 @@ export default function ShiftRequestForm() {
   const [error, setError] = useState("");
   const [requestView, setRequestView] = useState("week");
   const [monthOffset, setMonthOffset] = useState(1);
+  const [showConfirmedShifts, setShowConfirmedShifts] = useState(true);
 
   // 来週分の希望を出す想定(必要なら offset を 0 に変えて今週分にできます)
   const weekDates = getWeekDates(1);
@@ -167,9 +168,14 @@ export default function ShiftRequestForm() {
       </h2>
 
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontWeight: 700, color: "#5C3344", fontSize: 13, marginBottom: 6 }}>
-          🌸 現在のシフト表(確定分)
+        <div
+          onClick={() => setShowConfirmedShifts((v) => !v)}
+          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontWeight: 700, color: "#5C3344", fontSize: 13, marginBottom: 6, cursor: "pointer" }}
+        >
+          <span>🌸 現在のシフト表(確定分)</span>
+          <span style={{ fontSize: 12, color: "#D4789F" }}>{showConfirmedShifts ? "▲ 閉じる" : "▼ 表示する"}</span>
         </div>
+        {showConfirmedShifts && (
         <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 6 }}>
           {dates.map((d, i) => {
             const dateStr = d.toDateString();
@@ -220,6 +226,7 @@ export default function ShiftRequestForm() {
             );
           })}
         </div>
+        )}
       </div>
       {false && profile && (
         <div
