@@ -259,6 +259,34 @@ export default function CabShift() {
     { key: "drink", label: "雑費", color: "#5DC9E2", emoji: "💰" },
   ];
 
+  // シフトをCSVでダウンロードする(キャスト名,日付,開始,終了)
+  const exportShiftCSV = (dateList, label) => {
+    const pad = (n) => String(n).padStart(2, "0");
+    const rows = [["キャスト名", "日付", "開始", "終了"]];
+    dateList.forEach((d) => {
+      const dateStr = d.toDateString();
+      const ymd = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      cast.forEach((c) => {
+        const s = getShift(c.id, dateStr);
+        if (s.status !== "off" && s.in && s.out) {
+          rows.push([c.name, ymd, s.in, s.out]);
+        }
+      });
+    });
+    if (rows.length === 1) {
+      alert("この期間に出勤データがありません");
+      return;
+    }
+    const csv = "\uFEFF" + rows.map((r) => r.join(",")).join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `shift_${label}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const openDetail = (castId, dateStr) => setDetailModal({ castId, dateStr });
   const closeDetail = () => setDetailModal(null);
 
@@ -413,6 +441,9 @@ export default function CabShift() {
               <div style={{ fontWeight: 700, fontSize: 15 }}>{formatDate(dates[0])} 〜 {formatDate(dates[6])}</div>
               <button onClick={() => setWeekOffset((w) => w + 1)} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}>次週 →</button>
             </div>
+            <div style={{ textAlign: "right", marginBottom: 12 }}>
+              <button onClick={() => { const pad = (n) => String(n).padStart(2, "0"); const l = `${dates[0].getFullYear()}-${pad(dates[0].getMonth() + 1)}-${pad(dates[0].getDate())}`; exportShiftCSV(dates, l); }} style={{ background: "linear-gradient(135deg, #7ED9A7, #4CBF87)", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", boxShadow: "0 2px 8px rgba(76,191,135,0.3)" }}>📥 この週をCSV書き出し</button>
+            </div>
 
             {/* Daily cast cards */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, marginBottom: 16 }}>
@@ -521,6 +552,9 @@ export default function CabShift() {
                   <button onClick={prevMonth} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}>← 前月</button>
                   <div style={{ fontWeight: 700, fontSize: 15 }}>{summaryYear}年{summaryMonth + 1}月</div>
                   <button onClick={nextMonth} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}>次月 →</button>
+                </div>
+                <div style={{ textAlign: "right", marginBottom: 12 }}>
+                  <button onClick={() => exportShiftCSV(monthDates, `${summaryYear}-${String(summaryMonth + 1).padStart(2, "0")}`)} style={{ background: "linear-gradient(135deg, #7ED9A7, #4CBF87)", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", boxShadow: "0 2px 8px rgba(76,191,135,0.3)" }}>📥 この月をCSV書き出し</button>
                 </div>
                 {monthDates.map((d, i) => {
                   const dateStr = d.toDateString();
