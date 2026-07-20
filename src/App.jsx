@@ -198,6 +198,32 @@ export default function CabShift() {
     updateExpenses({ ...expenses, [dateStr]: dayExpenses });
   };
 
+  // ===== 毎月の支払い(家賃などの固定費)=====
+  const recurringList = Object.entries(settings.recurring || {}).map(([id, r]) => ({ id, ...(r || {}) }));
+  const addRecurring = () => updateSettings({ ...settings, recurring: { ...(settings.recurring || {}), ["r" + Date.now()]: { name: "", day: "", amount: "" } } });
+  const updateRecurring = (id, patch) => updateSettings({ ...settings, recurring: { ...(settings.recurring || {}), [id]: { ...((settings.recurring || {})[id] || {}), ...patch } } });
+  const removeRecurring = (id) => { const r = { ...(settings.recurring || {}) }; delete r[id]; updateSettings({ ...settings, recurring: r }); };
+  // 支払日まであと何日か(0=今日)
+  const daysUntilPay = (day) => {
+    const d = Number(day);
+    if (!d) return null;
+    const now = new Date();
+    const today = now.getDate();
+    const dim = (y, m) => new Date(y, m + 1, 0).getDate();
+    const thisMonthDay = Math.min(d, dim(now.getFullYear(), now.getMonth()));
+    if (thisMonthDay >= today) return thisMonthDay - today;
+    const ny = now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear();
+    const nm = (now.getMonth() + 1) % 12;
+    return dim(now.getFullYear(), now.getMonth()) - today + Math.min(d, dim(ny, nm));
+  };
+  // 「経費に追加」ボタン: 今日の経費として記録する
+  const payToExpense = (r) => {
+    const dateStr = new Date().toDateString();
+    const id = "e" + Date.now();
+    updateExpenses({ ...expenses, [dateStr]: { ...(expenses[dateStr] || {}), [id]: { category: r.name || "固定費", amount: r.amount || "" } } });
+    alert(`「${r.name || "固定費"}」を今日の経費に追加しました`);
+  };
+
   const getShift = (castId, dateStr) => (shifts[castId] || {})[dateStr] || { status: "off", in: "", out: "" };
   const getStat = (castId, dateStr) => (stats[castId] || {})[dateStr] || { douhan: 0, shimei: 0, drink: 0 };
 
@@ -440,6 +466,29 @@ export default function CabShift() {
       </div>
 
       <div style={{ padding: "20px 16px", maxWidth: 1000, margin: "0 auto" }}>
+        {/* 支払日のお知らせ(3日前から表示) */}
+        {(() => {
+          const upcoming = recurringList
+            .map((r) => ({ ...r, left: daysUntilPay(r.day) }))
+            .filter((r) => r.name && r.left != null && r.left <= 3)
+            .sort((a, b) => a.left - b.left);
+          if (!upcoming.length) return null;
+          return (
+            <div style={{ marginBottom: 16 }}>
+              {upcoming.map((r) => (
+                <div key={r.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, background: r.left === 0 ? "linear-gradient(135deg, #FF8FAB, #FF6B9D)" : "#FFF7E0", border: r.left === 0 ? "none" : "1.5px solid #FFC93C", borderRadius: 12, padding: "10px 14px", marginBottom: 8, boxShadow: r.left === 0 ? "0 4px 12px rgba(255,107,157,0.35)" : "none" }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: r.left === 0 ? "#fff" : "#8a6d1a" }}>
+                    {r.left === 0 ? `🔔 今日は「${r.name}」の支払日です!` : `📅 「${r.name}」の支払日(${r.day}日)まで あと${r.left}日`}
+                    {r.amount && <span style={{ marginLeft: 8, fontWeight: 700 }}>{formatYen(Number(r.amount) || 0)}</span>}
+                  </div>
+                  {r.left === 0 && (
+                    <button onClick={() => payToExpense(r)} style={{ flexShrink: 0, background: "#fff", border: "none", borderRadius: 8, padding: "6px 10px", fontSize: 12, fontWeight: 800, color: "#FF6B9D", cursor: "pointer" }}>経費に追加</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          );
+        })()}
         {tab === "shift" && (
           <div>
             <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
@@ -952,6 +1001,41 @@ export default function CabShift() {
                 return [...set].sort().map((c) => <option key={c} value={c} />);
               })()}
             </datalist>
+
+            {/* 毎月の支払い(固定費)の登録 */}
+            <div style={{ background: "#fff", borderRadius: 14, padding: "14px 18px", marginBottom: 16, boxShadow: "0 2px 8px rgba(255,201,60,0.2)", border: "1.5px solid #FFE9B0" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: recurringList.length ? 10 : 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: "#5C3344" }}>📅 毎月の支払い(家賃など)</div>
+                <button onClick={addRecurring} style={{ background: "#FFF7E0", color: "#c9971a", border: "none", borderRadius: 8, padding: "6px 12px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>+ 追加</button>
+              </div>
+              {recurringList.length === 0 && <div style={{ fontSize: 12, color: "#D4B98A", marginTop: 8 }}>「+ 追加」で家賃などを登録すると、支払日の3日前からお知らせが出ます</div>}
+              {recurringList.map((r) => (
+                <div key={r.id} style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6, flexWrap: "wrap" }}>
+                  <input
+                    placeholder="なまえ(例: 家賃)"
+                    value={r.name || ""}
+                    onChange={(ev) => updateRecurring(r.id, { name: ev.target.value })}
+                    style={{ flex: 2, minWidth: 110, border: "1px solid #FFE9B0", borderRadius: 8, padding: "8px 10px", fontSize: 13, outline: "none" }}
+                  />
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <span style={{ fontSize: 12, color: "#c9971a", fontWeight: 700 }}>毎月</span>
+                    <select value={r.day || ""} onChange={(ev) => updateRecurring(r.id, { day: ev.target.value })} style={{ border: "1px solid #FFE9B0", borderRadius: 8, padding: "8px 4px", fontSize: 13, outline: "none", background: "#fff", color: "#5C3344" }}>
+                      <option value="">--</option>
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map((dd) => <option key={dd} value={dd}>{dd}</option>)}
+                    </select>
+                    <span style={{ fontSize: 12, color: "#c9971a", fontWeight: 700 }}>日</span>
+                  </div>
+                  <input
+                    type="number"
+                    placeholder="金額(任意)"
+                    value={r.amount || ""}
+                    onChange={(ev) => updateRecurring(r.id, { amount: ev.target.value })}
+                    style={{ width: 100, border: "1px solid #FFE9B0", borderRadius: 8, padding: "8px 10px", fontSize: 13, outline: "none" }}
+                  />
+                  <button onClick={() => removeRecurring(r.id)} style={{ background: "#fff0f0", border: "none", borderRadius: 8, padding: "8px 10px", color: "#FF6B6B", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>削除</button>
+                </div>
+              ))}
+            </div>
 
             {dates.map((d, i) => {
               const dateStr = d.toDateString();
