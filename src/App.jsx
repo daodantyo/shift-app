@@ -237,6 +237,22 @@ export default function CabShift() {
     return `hsl(${hue}, 65%, 55%)`;
   };
   const [shiftView, setShiftView] = useState("week");
+  // スマホ表示かどうか(横幅700px未満ならスマホレイアウト)
+  const [isMobile, setIsMobile] = useState(typeof window !== "undefined" && window.innerWidth < 700);
+  const [mobileDayIdx, setMobileDayIdx] = useState(null); // スマホで選択中の日(null=今日)
+  useEffect(() => {
+    // スマホで画面幅に合わせて表示するための設定(viewport)
+    let meta = document.querySelector('meta[name="viewport"]');
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.setAttribute("name", "viewport");
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute("content", "width=device-width, initial-scale=1, viewport-fit=cover");
+    const onResize = () => setIsMobile(window.innerWidth < 700);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
   const [salesView, setSalesView] = useState("week");
   const [summaryMonth, setSummaryMonth] = useState(new Date().getMonth());
   const [summaryYear, setSummaryYear] = useState(new Date().getFullYear());
@@ -445,6 +461,76 @@ export default function CabShift() {
               <button onClick={() => { const pad = (n) => String(n).padStart(2, "0"); const l = `${dates[0].getFullYear()}-${pad(dates[0].getMonth() + 1)}-${pad(dates[0].getDate())}`; exportShiftCSV(dates, l); }} style={{ background: "linear-gradient(135deg, #7ED9A7, #4CBF87)", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", boxShadow: "0 2px 8px rgba(76,191,135,0.3)" }}>📥 この週をCSV書き出し</button>
             </div>
 
+            {/* ===== スマホ用レイアウト:今日(選択日)を大きく表示 ===== */}
+            {isMobile && (() => {
+              const todayIdx = dates.findIndex((d) => d.toDateString() === new Date().toDateString());
+              const selIdx = mobileDayIdx != null ? mobileDayIdx : todayIdx >= 0 ? todayIdx : 0;
+              const selDate = dates[selIdx] || dates[0];
+              const selStr = selDate.toDateString();
+              const isTodaySel = selDate.toDateString() === new Date().toDateString();
+              const sorted = [...cast].sort((a, b) => {
+                const sa = getShift(a.id, selStr); const sb = getShift(b.id, selStr);
+                if ((sa.status === "off") !== (sb.status === "off")) return sa.status === "off" ? 1 : -1;
+                return (sa.in || "99:99").localeCompare(sb.in || "99:99");
+              });
+              const workingCount = cast.filter((c) => getShift(c.id, selStr).status !== "off").length;
+              return (
+                <div>
+                  {/* 日付えらびボタン(横一列) */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 12 }}>
+                    {dates.map((d, i) => {
+                      const isT = d.toDateString() === new Date().toDateString();
+                      const isSel = i === selIdx;
+                      const cnt = cast.filter((c) => getShift(c.id, d.toDateString()).status !== "off").length;
+                      return (
+                        <button key={i} onClick={() => setMobileDayIdx(i)} style={{ border: isSel ? "2px solid #FF6B9D" : isT ? "1.5px solid #FFC93C" : "1.5px solid #FFD9E8", borderRadius: 10, padding: "5px 0", background: isSel ? "linear-gradient(135deg, #FFB6D5, #FF8FAB)" : "#fff", cursor: "pointer" }}>
+                          <div style={{ fontSize: 9, fontWeight: 700, color: isSel ? "#fff" : i >= 5 ? "#FF4D8D" : "#D4789F" }}>{DAYS[i]}</div>
+                          <div style={{ fontSize: 12, fontWeight: 800, color: isSel ? "#fff" : isT ? "#FFC93C" : "#5C3344" }}>{d.getDate()}</div>
+                          <div style={{ fontSize: 8, color: isSel ? "#FFE3EF" : "#D4789F" }}>{cnt}名</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {/* 選択した日の大きなカード */}
+                  <div style={{ background: "#fff", borderRadius: 16, border: isTodaySel ? "2px solid #FFC93C" : "2px solid #FFD9E8", boxShadow: "0 4px 16px rgba(255,107,157,0.15)", padding: "14px 12px", marginBottom: 16 }}>
+                    <div style={{ textAlign: "center", marginBottom: 12 }}>
+                      {isTodaySel && <span style={{ background: "linear-gradient(135deg, #FFC93C, #FFB03C)", color: "#fff", borderRadius: 20, padding: "3px 12px", fontSize: 12, fontWeight: 800, marginRight: 8, verticalAlign: "middle" }}>今日</span>}
+                      <span style={{ fontSize: 24, fontWeight: 800, color: "#5C3344", verticalAlign: "middle" }}>{formatDate(selDate)}</span>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: selIdx >= 5 ? "#FF4D8D" : "#D4789F", marginLeft: 6, verticalAlign: "middle" }}>({DAYS[selIdx]})</span>
+                      <div style={{ fontSize: 13, color: "#D4789F", marginTop: 4, fontWeight: 700 }}>出勤 {workingCount}名</div>
+                    </div>
+                    {sorted.map((member) => {
+                      const s = getShift(member.id, selStr);
+                      const isOff = s.status === "off";
+                      const hours = calcHours(s.in, s.out);
+                      const stat = getStat(member.id, selStr);
+                      return (
+                        <div key={member.id} style={{ borderRadius: 12, border: isOff ? "1.5px solid #f0f0f0" : `1.5px solid ${rankColor(member.rank)}55`, background: isOff ? "#fafafa" : "#FFF5F8", padding: "8px 10px", marginBottom: 8 }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontWeight: 800, fontSize: isOff ? 13 : 17, color: isOff ? "#bbb" : "#5C3344", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{member.name}</div>
+                              <div style={{ fontSize: 10, fontWeight: 700, color: isOff ? "#ccc" : rankColor(member.rank) }}>{member.rank}</div>
+                            </div>
+                            <button onClick={() => updateShift(member.id, selStr, { status: isOff ? "work" : "off" })} style={{ border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer", background: isOff ? "#f0f0f0" : "linear-gradient(135deg, #FF8FAB, #FF6B9D)", color: isOff ? "#bbb" : "#fff", flexShrink: 0 }}>{isOff ? "休み" : "出勤"}</button>
+                          </div>
+                          {!isOff && (
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                              <div style={{ width: 108 }}><TimeSelect value={s.in || ""} onChange={(v) => updateShift(member.id, selStr, { in: v })} style={{ fontSize: 14, padding: "6px 2px" }} /></div>
+                              <span style={{ color: "#D4789F", fontWeight: 700 }}>〜</span>
+                              <div style={{ width: 108 }}><TimeSelect value={s.out || ""} onChange={(v) => updateShift(member.id, selStr, { out: v })} style={{ fontSize: 14, padding: "6px 2px" }} /></div>
+                              {hours && <span style={{ fontSize: 12, color: "#D4789F", fontWeight: 700 }}>{hours}h</span>}
+                              <button onClick={() => openDetail(member.id, selStr)} style={{ background: "rgba(255,199,60,0.15)", border: "1px solid rgba(255,199,60,0.3)", borderRadius: 8, padding: "6px 8px", fontSize: 11, color: "#FFC93C", cursor: "pointer", fontWeight: 700, marginLeft: "auto" }}>本{stat.douhan} 姫{stat.shimei} 💰{stat.drink}</button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {!isMobile && (<>
             {/* Daily cast cards */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, marginBottom: 16 }}>
               {dates.map((d, i) => {
@@ -543,6 +629,7 @@ export default function CabShift() {
               </div>
             </div>
             </div>
+            </>)}
             </div>
             )}
 
