@@ -900,7 +900,17 @@ export default function CabShift() {
 
             {(() => {
               const weekExpenseTotal = dates.reduce((sum, d) => sum + getExpenseList(d.toDateString()).reduce((s, e) => s + (Number(e.amount) || 0), 0), 0);
+              // 費目ごとの内訳を集計する
+              const byCat = {};
+              dates.forEach((d) => getExpenseList(d.toDateString()).forEach((e) => {
+                const amt = Number(e.amount) || 0;
+                if (!amt) return;
+                const c = (e.category || "").trim() || "費目なし";
+                byCat[c] = (byCat[c] || 0) + amt;
+              }));
+              const catList = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
               return (
+                <div>
                 <div style={{ background: "linear-gradient(135deg, #B6C9FF, #8FA8FF)", borderRadius: 14, padding: "20px 24px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div>
                     <div style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>週間経費合計</div>
@@ -908,8 +918,40 @@ export default function CabShift() {
                   </div>
                   <div style={{ fontSize: 36 }}>🧾</div>
                 </div>
+                {catList.length > 0 && (
+                  <div style={{ background: "#fff", borderRadius: 14, padding: "14px 18px", marginBottom: 16, boxShadow: "0 2px 8px rgba(143,168,255,0.15)" }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "#5C3344", marginBottom: 10 }}>📊 費目べつ内訳(この週)</div>
+                    {catList.map(([c, amt]) => {
+                      const pct = weekExpenseTotal ? Math.round((amt / weekExpenseTotal) * 100) : 0;
+                      return (
+                        <div key={c} style={{ marginBottom: 8 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: "#5C3344" }}>{c}</div>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: "#7B8FE8" }}>{formatYen(amt)} <span style={{ fontSize: 11, color: "#B0BCE8" }}>({pct}%)</span></div>
+                          </div>
+                          <div style={{ background: "#EEF1FF", borderRadius: 6, height: 8, overflow: "hidden" }}>
+                            <div style={{ width: `${pct}%`, height: "100%", background: "linear-gradient(135deg, #B6C9FF, #8FA8FF)", borderRadius: 6 }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                </div>
               );
             })()}
+
+            {/* 過去に使った費目の候補(入力欄でタップ/クリックすると選べる) */}
+            <datalist id="expense-cat-list">
+              {(() => {
+                const set = new Set();
+                Object.values(expenses).forEach((day) => Object.values(day || {}).forEach((e) => {
+                  const c = ((e && e.category) || "").trim();
+                  if (c) set.add(c);
+                }));
+                return [...set].sort().map((c) => <option key={c} value={c} />);
+              })()}
+            </datalist>
 
             {dates.map((d, i) => {
               const dateStr = d.toDateString();
@@ -933,6 +975,7 @@ export default function CabShift() {
                     <div key={e.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
                       <input
                         placeholder="費目(例: 備品)"
+                        list="expense-cat-list"
                         value={e.category || ""}
                         onChange={(ev) => updateExpense(dateStr, e.id, { category: ev.target.value })}
                         style={{ flex: 1, border: "1px solid #E0E4FF", borderRadius: 8, padding: "8px 10px", fontSize: 13, outline: "none" }}
