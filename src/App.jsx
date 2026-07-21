@@ -221,8 +221,15 @@ export default function CabShift() {
     const dateStr = new Date().toDateString();
     const id = "e" + Date.now();
     updateExpenses({ ...expenses, [dateStr]: { ...(expenses[dateStr] || {}), [id]: { category: r.name || "固定費", amount: r.amount || "" } } });
+    // 今月ぶんを「支払った」チェック済みにする
+    const key = new Date().getFullYear() + "-" + (new Date().getMonth() + 1);
+    updateRecurring(r.id, { paid: { ...((settings.recurring || {})[r.id] || {}).paid, [key]: true } });
     alert(`「${r.name || "固定費"}」を今日の経費に追加しました`);
   };
+  // 今月ぶんが支払い済みか / チェックの切り替え
+  const payKey = () => new Date().getFullYear() + "-" + (new Date().getMonth() + 1);
+  const isPaidThisMonth = (r) => !!((r.paid || {})[payKey()]);
+  const togglePaid = (r) => updateRecurring(r.id, { paid: { ...(r.paid || {}), [payKey()]: !isPaidThisMonth(r) } });
 
   const getShift = (castId, dateStr) => (shifts[castId] || {})[dateStr] || { status: "off", in: "", out: "" };
   const getStat = (castId, dateStr) => (stats[castId] || {})[dateStr] || { douhan: 0, shimei: 0, drink: 0 };
@@ -247,6 +254,14 @@ export default function CabShift() {
 
   const removeCast = (id) => updateCast(cast.filter((c) => c.id !== id));
   const saveEdit = () => { if (!editingCast) return; updateCast(cast.map((c) => c.id === editingCast.id ? editingCast : c)); setEditingCast(null); };
+  // キャストの並び順を上下に入れ替える
+  const moveCast = (index, dir) => {
+    const ni = index + dir;
+    if (ni < 0 || ni >= cast.length) return;
+    const arr = [...cast];
+    const tmp = arr[index]; arr[index] = arr[ni]; arr[ni] = tmp;
+    updateCast(arr);
+  };
 
   const formatDate = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
   const weekSales = dates.reduce((sum, d) => sum + (Number((sales[d.toDateString()] || {}).amount) || 0), 0);
@@ -470,7 +485,7 @@ export default function CabShift() {
         {(() => {
           const upcoming = recurringList
             .map((r) => ({ ...r, left: daysUntilPay(r.day) }))
-            .filter((r) => r.name && r.left != null && r.left <= 3)
+            .filter((r) => r.name && r.left != null && r.left <= 3 && !isPaidThisMonth(r))
             .sort((a, b) => a.left - b.left);
           if (!upcoming.length) return null;
           return (
@@ -1009,13 +1024,16 @@ export default function CabShift() {
                 <button onClick={addRecurring} style={{ background: "#FFF7E0", color: "#c9971a", border: "none", borderRadius: 8, padding: "6px 12px", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>+ 追加</button>
               </div>
               {recurringList.length === 0 && <div style={{ fontSize: 12, color: "#D4B98A", marginTop: 8 }}>「+ 追加」で家賃などを登録すると、支払日の3日前からお知らせが出ます</div>}
-              {recurringList.map((r) => (
-                <div key={r.id} style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6, flexWrap: "wrap" }}>
+              {recurringList.map((r) => {
+                const paid = isPaidThisMonth(r);
+                return (
+                <div key={r.id} style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6, flexWrap: "wrap", background: paid ? "#F0FBF3" : "transparent", borderRadius: 8, padding: paid ? "4px 4px" : 0 }}>
+                  <button onClick={() => togglePaid(r)} title="今月の支払い済み" style={{ flexShrink: 0, width: 30, height: 30, borderRadius: 8, border: paid ? "none" : "1.5px solid #FFD9E8", background: paid ? "linear-gradient(135deg, #6FCF97, #4CAF7D)" : "#fff", color: "#fff", fontSize: 15, fontWeight: 800, cursor: "pointer" }}>{paid ? "✓" : ""}</button>
                   <input
                     placeholder="なまえ(例: 家賃)"
                     value={r.name || ""}
                     onChange={(ev) => updateRecurring(r.id, { name: ev.target.value })}
-                    style={{ flex: 2, minWidth: 110, border: "1px solid #FFE9B0", borderRadius: 8, padding: "8px 10px", fontSize: 13, outline: "none" }}
+                    style={{ flex: 2, minWidth: 100, border: "1px solid #FFE9B0", borderRadius: 8, padding: "8px 10px", fontSize: 13, outline: "none", textDecoration: paid ? "line-through" : "none", color: paid ? "#9ac9ad" : "#5C3344" }}
                   />
                   <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                     <span style={{ fontSize: 12, color: "#c9971a", fontWeight: 700 }}>毎月</span>
@@ -1034,7 +1052,8 @@ export default function CabShift() {
                   />
                   <button onClick={() => removeRecurring(r.id)} style={{ background: "#fff0f0", border: "none", borderRadius: 8, padding: "8px 10px", color: "#FF6B6B", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>削除</button>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             {dates.map((d, i) => {
@@ -1139,8 +1158,14 @@ export default function CabShift() {
                 </div>
               </div>
             )}
-            {cast.map((member) => (
+            {cast.map((member, idx) => (
               <div key={member.id} style={{ background: "#fff", borderRadius: 14, padding: "16px 20px", marginBottom: 10, display: "flex", alignItems: "center", gap: 14 }}>
+                {editingCast?.id !== member.id && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2, flexShrink: 0 }}>
+                    <button onClick={() => moveCast(idx, -1)} disabled={idx === 0} title="上へ" style={{ width: 30, height: 24, border: "1px solid #FFD9E8", borderRadius: 6, background: idx === 0 ? "#f7f7f7" : "#fff", color: idx === 0 ? "#ccc" : "#FF6B9D", cursor: idx === 0 ? "default" : "pointer", fontSize: 13, fontWeight: 800, lineHeight: 1 }}>▲</button>
+                    <button onClick={() => moveCast(idx, 1)} disabled={idx === cast.length - 1} title="下へ" style={{ width: 30, height: 24, border: "1px solid #FFD9E8", borderRadius: 6, background: idx === cast.length - 1 ? "#f7f7f7" : "#fff", color: idx === cast.length - 1 ? "#ccc" : "#FF6B9D", cursor: idx === cast.length - 1 ? "default" : "pointer", fontSize: 13, fontWeight: 800, lineHeight: 1 }}>▼</button>
+                  </div>
+                )}
                 <div style={{ width: 46, height: 46, borderRadius: "50%", background: `linear-gradient(135deg, ${rankColor(member.rank)}, #FF8FAB)`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 20 }}>{member.name[0]}</div>
                 {editingCast?.id === member.id ? (
                   <div style={{ flex: 1, display: "flex", gap: 8, flexWrap: "wrap" }}>
