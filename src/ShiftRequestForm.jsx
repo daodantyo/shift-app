@@ -20,9 +20,6 @@ const DARK_LINE_BG = {
 // ↓ LINE Developersコンソールで発行したLIFF IDに置き換えてください
 const LIFF_ID = "2010692487-HEfxObPq";
 
-// ↓ 女の子に伝える「合言葉」。ここの文字を変えれば合言葉が変わります
-const REQUEST_PASSWORD = "123";
-
 function TimeSelect({ value, onChange }) {
   const [h, m] = (value || "").split(":");
   const hour = h || "";
@@ -87,20 +84,23 @@ export default function ShiftRequestForm() {
   const [monthOffset, setMonthOffset] = useState(1);
   const [showConfirmedShifts, setShowConfirmedShifts] = useState(true);
 
-  // 合言葉(1回入れたらそのスマホでは次から不要)
-  const [unlocked, setUnlocked] = useState(
-    typeof window !== "undefined" && localStorage.getItem("shiftRequestUnlocked") === "1"
-  );
-  const [pwInput, setPwInput] = useState("");
+  // キャストごとのパスワード(名前を選んだあとに入力してもらう)
+  const [castPwInput, setCastPwInput] = useState("");
   const [pwError, setPwError] = useState("");
+  const selectedCast = castList.find((c) => String(c.id) === String(selectedCastId));
+  const castPassword = (selectedCast && selectedCast.password) || "";
+  // そのスマホで前に入れたパスワード(合っていれば入力を省略)
+  const savedPw = typeof window !== "undefined" && selectedCastId ? localStorage.getItem("shiftReqPw_" + selectedCastId) : null;
+  // パスワードが未設定の子は、そのまま進める
+  const passOk = !castPassword || savedPw === castPassword;
   const tryUnlock = () => {
-    if (pwInput.trim() === REQUEST_PASSWORD) {
-      localStorage.setItem("shiftRequestUnlocked", "1");
-      setUnlocked(true);
+    if (castPwInput.trim() === castPassword) {
+      localStorage.setItem("shiftReqPw_" + selectedCastId, castPassword);
+      setCastPwInput("");
       setPwError("");
     } else {
-      setPwError("合言葉がちがいます");
-      setPwInput("");
+      setPwError("パスワードがちがいます");
+      setCastPwInput("");
     }
   };
 
@@ -197,34 +197,6 @@ export default function ShiftRequestForm() {
     );
   }
 
-  // 合言葉が未入力のあいだは、この画面だけを表示する
-  if (!unlocked) {
-    return (
-      <div style={{ fontFamily: "'Segoe UI','Noto Sans JP',sans-serif", minHeight: "100vh", ...DARK_LINE_BG, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-        <div style={{ background: "#fff", borderRadius: 16, padding: "28px 22px", width: "100%", maxWidth: 340, boxShadow: "0 8px 24px rgba(0,0,0,0.35)" }}>
-          <div style={{ textAlign: "center", fontSize: 34, marginBottom: 6 }}>🌸</div>
-          <div style={{ textAlign: "center", fontWeight: 800, fontSize: 17, color: "#5C3344", marginBottom: 4 }}>希望シフト提出</div>
-          <div style={{ textAlign: "center", fontSize: 12, color: "#D4789F", marginBottom: 18 }}>お店から聞いた合言葉を入れてね</div>
-          <input
-            type="password"
-            value={pwInput}
-            onChange={(e) => setPwInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && tryUnlock()}
-            placeholder="合言葉"
-            style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #FFD9E8", fontSize: 16, outline: "none", textAlign: "center" }}
-          />
-          {pwError && <div style={{ color: "#FF6B6B", fontSize: 12, textAlign: "center", marginTop: 8, fontWeight: 700 }}>{pwError}</div>}
-          <button
-            onClick={tryUnlock}
-            style={{ width: "100%", marginTop: 14, padding: 13, borderRadius: 10, border: "none", background: "linear-gradient(135deg, #FF8FAB, #FF6B9D)", color: "#fff", fontWeight: 800, fontSize: 15, cursor: "pointer" }}
-          >
-            はいる
-          </button>
-          <div style={{ textAlign: "center", fontSize: 11, color: "#FFB6D5", marginTop: 12 }}>一度入れたら次回からは省略されます</div>
-        </div>
-      </div>
-    );
-  }
 
   if (submitted) {
     return (
@@ -340,7 +312,7 @@ export default function ShiftRequestForm() {
         </label>
         <select
           value={selectedCastId}
-          onChange={(e) => setSelectedCastId(e.target.value)}
+          onChange={(e) => { setSelectedCastId(e.target.value); setCastPwInput(""); setPwError(""); }}
           style={{
             width: "100%",
             padding: 10,
@@ -357,6 +329,35 @@ export default function ShiftRequestForm() {
           ))}
         </select>
       </div>
+
+      {/* 名前を選んだあとのパスワード確認 */}
+      {selectedCastId && !passOk && (
+        <div style={{ background: "#fff", borderRadius: 14, padding: "20px 18px", marginBottom: 16, border: "2px solid #FFC93C" }}>
+          <div style={{ textAlign: "center", fontSize: 28, marginBottom: 4 }}>🔑</div>
+          <div style={{ textAlign: "center", fontWeight: 800, fontSize: 15, color: "#5C3344", marginBottom: 2 }}>
+            {selectedCast ? selectedCast.name : ""} さんのパスワード
+          </div>
+          <div style={{ textAlign: "center", fontSize: 11, color: "#D4789F", marginBottom: 14 }}>お店から聞いたパスワードを入れてね</div>
+          <input
+            type="password"
+            value={castPwInput}
+            onChange={(e) => setCastPwInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && tryUnlock()}
+            placeholder="パスワード"
+            style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #FFD9E8", fontSize: 16, outline: "none", textAlign: "center" }}
+          />
+          {pwError && <div style={{ color: "#FF6B6B", fontSize: 12, textAlign: "center", marginTop: 8, fontWeight: 700 }}>{pwError}</div>}
+          <button
+            onClick={tryUnlock}
+            style={{ width: "100%", marginTop: 14, padding: 13, borderRadius: 10, border: "none", background: "linear-gradient(135deg, #FF8FAB, #FF6B9D)", color: "#fff", fontWeight: 800, fontSize: 15, cursor: "pointer" }}
+          >
+            すすむ
+          </button>
+          <div style={{ textAlign: "center", fontSize: 11, color: "#FFB6D5", marginTop: 12 }}>一度入れたら次回からは省略されます</div>
+        </div>
+      )}
+
+      {selectedCastId && passOk && (<>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         {[{ id: "week", label: "週間" }, { id: "month", label: "月間" }].map((v) => (
@@ -478,6 +479,7 @@ export default function ShiftRequestForm() {
       >
         送信する
       </button>
+      </>)}
     </div>
   );
 }
