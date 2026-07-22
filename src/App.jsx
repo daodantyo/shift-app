@@ -1171,6 +1171,7 @@ export default function CabShift() {
                   <div style={{ flex: 1, display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <input value={editingCast.name} onChange={(e) => setEditingCast({ ...editingCast, name: e.target.value })} style={{ flex: 1, minWidth: 120, border: "1.5px solid #FF8FAB", borderRadius: 8, padding: "8px 12px", fontSize: 14, outline: "none" }} />
                     <input placeholder="ランク(自由入力)" value={editingCast.rank} onChange={(e) => setEditingCast({ ...editingCast, rank: e.target.value })} style={{ border: "1.5px solid #FFD9E8", borderRadius: 8, padding: "8px 12px", fontSize: 14, outline: "none", background: "#fff", minWidth: 120 }} />
+                    <input placeholder="🔑 パスワード(半角英数)" value={editingCast.password || ""} onChange={(e) => setEditingCast({ ...editingCast, password: e.target.value })} style={{ border: "1.5px solid #FFC93C", borderRadius: 8, padding: "8px 12px", fontSize: 14, outline: "none", background: "#FFFDF5", minWidth: 150 }} />
                     <button onClick={saveEdit} style={{ background: "#FF8FAB", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontWeight: 700, cursor: "pointer" }}>保存</button>
                     <button onClick={() => setEditingCast(null)} style={{ background: "#FFF0F5", color: "#D4789F", border: "none", borderRadius: 8, padding: "8px 16px", fontWeight: 600, cursor: "pointer" }}>キャンセル</button>
                   </div>
@@ -1179,6 +1180,9 @@ export default function CabShift() {
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 700, fontSize: 16 }}>{member.name}</div>
                       <div style={{ fontSize: 12, fontWeight: 700, color: rankColor(member.rank), marginTop: 2 }}>{member.rank}</div>
+                      <div style={{ fontSize: 11, marginTop: 3, fontWeight: 700, color: member.password ? "#c9971a" : "#FF6B6B" }}>
+                        🔑 {member.password ? member.password : "パスワード未設定"}
+                      </div>
                       <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
                         <span style={{ fontSize: 11, color: "#FF6B6B" }}>本指名 {totalStat(member.id, "douhan")}</span>
                         <span style={{ fontSize: 11, color: "#FFC93C" }}>姫指名 {totalStat(member.id, "shimei")}</span>
