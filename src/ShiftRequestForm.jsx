@@ -20,6 +20,9 @@ const DARK_LINE_BG = {
 // ↓ LINE Developersコンソールで発行したLIFF IDに置き換えてください
 const LIFF_ID = "2010692487-HEfxObPq";
 
+// ↓ 女の子に伝える「合言葉」。ここの文字を変えれば合言葉が変わります
+const REQUEST_PASSWORD = "himeshift";
+
 function TimeSelect({ value, onChange }) {
   const [h, m] = (value || "").split(":");
   const hour = h || "";
@@ -83,6 +86,23 @@ export default function ShiftRequestForm() {
   const [requestView, setRequestView] = useState("week");
   const [monthOffset, setMonthOffset] = useState(1);
   const [showConfirmedShifts, setShowConfirmedShifts] = useState(true);
+
+  // 合言葉(1回入れたらそのスマホでは次から不要)
+  const [unlocked, setUnlocked] = useState(
+    typeof window !== "undefined" && localStorage.getItem("shiftRequestUnlocked") === "1"
+  );
+  const [pwInput, setPwInput] = useState("");
+  const [pwError, setPwError] = useState("");
+  const tryUnlock = () => {
+    if (pwInput.trim() === REQUEST_PASSWORD) {
+      localStorage.setItem("shiftRequestUnlocked", "1");
+      setUnlocked(true);
+      setPwError("");
+    } else {
+      setPwError("合言葉がちがいます");
+      setPwInput("");
+    }
+  };
 
   // 来週分の希望を出す想定(必要なら offset を 0 に変えて今週分にできます)
   const weekDates = getWeekDates(1);
@@ -173,6 +193,35 @@ export default function ShiftRequestForm() {
     return (
       <div style={{ minHeight: "100vh", padding: 60, textAlign: "center", color: "#D4789F", ...DARK_LINE_BG }}>
         読み込み中...
+      </div>
+    );
+  }
+
+  // 合言葉が未入力のあいだは、この画面だけを表示する
+  if (!unlocked) {
+    return (
+      <div style={{ fontFamily: "'Segoe UI','Noto Sans JP',sans-serif", minHeight: "100vh", ...DARK_LINE_BG, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+        <div style={{ background: "#fff", borderRadius: 16, padding: "28px 22px", width: "100%", maxWidth: 340, boxShadow: "0 8px 24px rgba(0,0,0,0.35)" }}>
+          <div style={{ textAlign: "center", fontSize: 34, marginBottom: 6 }}>🌸</div>
+          <div style={{ textAlign: "center", fontWeight: 800, fontSize: 17, color: "#5C3344", marginBottom: 4 }}>希望シフト提出</div>
+          <div style={{ textAlign: "center", fontSize: 12, color: "#D4789F", marginBottom: 18 }}>お店から聞いた合言葉を入れてね</div>
+          <input
+            type="password"
+            value={pwInput}
+            onChange={(e) => setPwInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && tryUnlock()}
+            placeholder="合言葉"
+            style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #FFD9E8", fontSize: 16, outline: "none", textAlign: "center" }}
+          />
+          {pwError && <div style={{ color: "#FF6B6B", fontSize: 12, textAlign: "center", marginTop: 8, fontWeight: 700 }}>{pwError}</div>}
+          <button
+            onClick={tryUnlock}
+            style={{ width: "100%", marginTop: 14, padding: 13, borderRadius: 10, border: "none", background: "linear-gradient(135deg, #FF8FAB, #FF6B9D)", color: "#fff", fontWeight: 800, fontSize: 15, cursor: "pointer" }}
+          >
+            はいる
+          </button>
+          <div style={{ textAlign: "center", fontSize: 11, color: "#FFB6D5", marginTop: 12 }}>一度入れたら次回からは省略されます</div>
+        </div>
       </div>
     );
   }
