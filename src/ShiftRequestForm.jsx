@@ -21,7 +21,7 @@ const DARK_LINE_BG = {
 const LIFF_ID = "2010692487-HEfxObPq";
 
 // ↓ 女の子に伝える「合言葉」。ここの文字を変えれば合言葉が変わります
-const REQUEST_PASSWORD = "himeshift";
+const REQUEST_PASSWORD = "123456789";
 
 function TimeSelect({ value, onChange }) {
   const [h, m] = (value || "").split(":");
