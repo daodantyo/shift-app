@@ -316,6 +316,47 @@ export default function CabShift() {
     { key: "drink", label: "雑費", color: "#5DC9E2", emoji: "💰" },
   ];
 
+  // 売上をCSVでダウンロードする(Excelでそのまま開けます)
+  const exportSalesCSV = (dateList, label) => {
+    const pad = (n) => String(n).padStart(2, "0");
+    const rows = [["日付", "曜日", "店舗売上", "キャスト名", "キャスト売上", "本指名", "姫指名", "雑費"]];
+    let grand = 0;
+    dateList.forEach((d) => {
+      const dateStr = d.toDateString();
+      const ymd = `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())}`;
+      const youbi = DAYS[(d.getDay() + 6) % 7];
+      const shopAmount = Number((sales[dateStr] || {}).amount) || 0;
+      grand += shopAmount;
+      // その日に数字が入っているキャストだけを書き出す
+      const members = cast.filter((c) => {
+        const s = getStat(c.id, dateStr);
+        return (Number(s.sales) || 0) || (Number(s.douhan) || 0) || (Number(s.shimei) || 0) || (Number(s.drink) || 0);
+      });
+      if (members.length === 0) {
+        if (shopAmount) rows.push([ymd, youbi, shopAmount, "", "", "", "", ""]);
+        return;
+      }
+      members.forEach((c, i) => {
+        const s = getStat(c.id, dateStr);
+        rows.push([ymd, youbi, i === 0 ? shopAmount : "", c.name, Number(s.sales) || 0, Number(s.douhan) || 0, Number(s.shimei) || 0, Number(s.drink) || 0]);
+      });
+    });
+    if (rows.length === 1) {
+      alert("この期間に売上データがありません");
+      return;
+    }
+    rows.push([]);
+    rows.push(["合計", "", grand, "", "", "", "", ""]);
+    const csv = "\uFEFF" + rows.map((r) => r.join(",")).join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `uriage_${label}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   // シフトをCSVでダウンロードする(キャスト名,日付,開始,終了)
   const exportShiftCSV = (dateList, label) => {
     const pad = (n) => String(n).padStart(2, "0");
@@ -775,6 +816,7 @@ export default function CabShift() {
                   </div>
                   <div style={{ fontSize: 36 }}>💎</div>
                 </div>
+                <button onClick={() => { const pad = (n) => String(n).padStart(2, "0"); exportSalesCSV(dates, `${dates[0].getFullYear()}-${pad(dates[0].getMonth() + 1)}-${pad(dates[0].getDate())}`); }} style={{ width: "100%", background: "linear-gradient(135deg, #7ED9A7, #4CBF87)", border: "none", borderRadius: 10, padding: "12px 16px", cursor: "pointer", fontWeight: 700, fontSize: 14, color: "#fff", marginBottom: 16, boxShadow: "0 2px 8px rgba(76,191,135,0.3)" }}>📊 この週の売上をエクセルに書き出し</button>
                 <div style={{ background: "#fff", borderRadius: 14, padding: 16, marginBottom: 16 }}>
                   <div style={{ fontWeight: 700, fontSize: 14, color: "#5C3344", marginBottom: 4 }}>キャスト週間成績</div>
                   <div style={{ fontSize: 11, color: "#D4789F", marginBottom: 12 }}>キャストをタップすると、その場で日ごとの数値を入力できます</div>
@@ -921,6 +963,7 @@ export default function CabShift() {
                     </div>
                   );
                 })()}
+                <button onClick={() => exportSalesCSV(monthDates, `${summaryYear}-${String(summaryMonth + 1).padStart(2, "0")}`)} style={{ width: "100%", background: "linear-gradient(135deg, #7ED9A7, #4CBF87)", border: "none", borderRadius: 10, padding: "12px 16px", cursor: "pointer", fontWeight: 700, fontSize: 14, color: "#fff", marginBottom: 16, boxShadow: "0 2px 8px rgba(76,191,135,0.3)" }}>📊 この月の売上をエクセルに書き出し</button>
                 {monthDates.map((d, i) => {
                   const dateStr = d.toDateString();
                   const isWeekend = d.getDay() === 0 || d.getDay() === 6;
