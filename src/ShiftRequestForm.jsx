@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import liff from "@line/liff";
 import { db } from "./firebase";
-import { ref, push, onValue } from "firebase/database";
+import { ref, push, onValue, set } from "firebase/database";
 
 const DAYS = ["月", "火", "水", "木", "金", "土", "日"];
 
@@ -176,6 +176,16 @@ export default function ShiftRequestForm() {
       return;
     }
     setError("");
+    // お知らせLINE送信用:この子の名前とLINEの対応を1か所にまとめて保存(最新の1件だけ残す)
+    if (profile?.userId) {
+      set(ref(db, "castLine/" + selectedCastId), {
+        castId: selectedCastId,
+        castName: (selectedCast && selectedCast.name) || "",
+        lineUserId: profile.userId,
+        lineName: profile.displayName || "",
+        updatedAt: Date.now(),
+      }).catch(() => {});
+    }
     const requestsRef = ref(db, "shiftRequests");
     push(requestsRef, {
       castId: selectedCastId,
