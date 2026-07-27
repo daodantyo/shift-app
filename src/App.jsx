@@ -295,6 +295,7 @@ export default function CabShift() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
   const [salesView, setSalesView] = useState("week");
+  const [expensesView, setExpensesView] = useState("week");
   const [summaryMonth, setSummaryMonth] = useState(new Date().getMonth());
   const [summaryYear, setSummaryYear] = useState(new Date().getFullYear());
 
@@ -353,6 +354,44 @@ export default function CabShift() {
     const a = document.createElement("a");
     a.href = url;
     a.download = `uriage_${label}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // 経費をCSVでダウンロードする(Excelでそのまま開けます)
+  const exportExpenseCSV = (dateList, label) => {
+    const pad = (n) => String(n).padStart(2, "0");
+    const rows = [["日付", "曜日", "費目", "金額"]];
+    let grand = 0;
+    const byCat = {};
+    dateList.forEach((d) => {
+      const dateStr = d.toDateString();
+      const ymd = `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())}`;
+      const youbi = DAYS[(d.getDay() + 6) % 7];
+      getExpenseList(dateStr).forEach((e) => {
+        const amt = Number(e.amount) || 0;
+        if (!amt) return;
+        const c = (e.category || "").trim() || "費目なし";
+        rows.push([ymd, youbi, c, amt]);
+        grand += amt;
+        byCat[c] = (byCat[c] || 0) + amt;
+      });
+    });
+    if (rows.length === 1) {
+      alert("この期間に経費データがありません");
+      return;
+    }
+    rows.push([]);
+    rows.push(["■費目べつ合計", "", "", ""]);
+    Object.entries(byCat).sort((a, b) => b[1] - a[1]).forEach(([c, amt]) => rows.push(["", "", c, amt]));
+    rows.push([]);
+    rows.push(["合計", "", "", grand]);
+    const csv = "\uFEFF" + rows.map((r) => r.join(",")).join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `keihi_${label}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -997,19 +1036,38 @@ export default function CabShift() {
           </div>
         )}
 
-        {tab === "expenses" && (
+        {tab === "expenses" && (() => {
+          const expDates = expensesView === "month" ? monthDates : dates;
+          return (
           <div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+              {[{ id: "week", label: "週間" }, { id: "month", label: "月間" }].map((v) => (
+                <button key={v.id} onClick={() => setExpensesView(v.id)} style={{ flex: 1, padding: "10px 0", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: "pointer", background: expensesView === v.id ? "linear-gradient(135deg, #B6C9FF, #8FA8FF)" : "#fff", color: expensesView === v.id ? "#fff" : "#7B8FE8", boxShadow: expensesView === v.id ? "0 2px 8px rgba(143,168,255,0.3)" : "none" }}>
+                  {v.label}
+                </button>
+              ))}
+            </div>
+
+            {expensesView === "week" && (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
               <button onClick={() => setWeekOffset((w) => w - 1)} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}>← 前週</button>
               <div style={{ fontWeight: 700, fontSize: 15 }}>{formatDate(dates[0])} 〜 {formatDate(dates[6])}</div>
               <button onClick={() => setWeekOffset((w) => w + 1)} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}>次週 →</button>
             </div>
+            )}
+            {expensesView === "month" && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <button onClick={prevMonth} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}>← 前月</button>
+              <div style={{ fontWeight: 700, fontSize: 15 }}>{summaryYear}年{summaryMonth + 1}月</div>
+              <button onClick={nextMonth} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}>次月 →</button>
+            </div>
+            )}
 
             {(() => {
-              const weekExpenseTotal = dates.reduce((sum, d) => sum + getExpenseList(d.toDateString()).reduce((s, e) => s + (Number(e.amount) || 0), 0), 0);
+              const weekExpenseTotal = expDates.reduce((sum, d) => sum + getExpenseList(d.toDateString()).reduce((s, e) => s + (Number(e.amount) || 0), 0), 0);
               // 費目ごとの内訳を集計する
               const byCat = {};
-              dates.forEach((d) => getExpenseList(d.toDateString()).forEach((e) => {
+              expDates.forEach((d) => getExpenseList(d.toDateString()).forEach((e) => {
                 const amt = Number(e.amount) || 0;
                 if (!amt) return;
                 const c = (e.category || "").trim() || "費目なし";
@@ -1020,14 +1078,15 @@ export default function CabShift() {
                 <div>
                 <div style={{ background: "linear-gradient(135deg, #B6C9FF, #8FA8FF)", borderRadius: 14, padding: "20px 24px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div>
-                    <div style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>週間経費合計</div>
+                    <div style={{ color: "#fff", fontSize: 13, fontWeight: 600 }}>{expensesView === "month" ? "月間経費合計" : "週間経費合計"}</div>
                     <div style={{ color: "#fff", fontSize: 28, fontWeight: 800, marginTop: 4 }}>{formatYen(weekExpenseTotal)}</div>
                   </div>
                   <div style={{ fontSize: 36 }}>🧾</div>
                 </div>
+                <button onClick={() => { const pad = (n) => String(n).padStart(2, "0"); const lbl = expensesView === "month" ? `${summaryYear}-${pad(summaryMonth + 1)}` : `${expDates[0].getFullYear()}-${pad(expDates[0].getMonth() + 1)}-${pad(expDates[0].getDate())}`; exportExpenseCSV(expDates, lbl); }} style={{ width: "100%", background: "linear-gradient(135deg, #7ED9A7, #4CBF87)", border: "none", borderRadius: 10, padding: "12px 16px", cursor: "pointer", fontWeight: 700, fontSize: 14, color: "#fff", marginBottom: 16, boxShadow: "0 2px 8px rgba(76,191,135,0.3)" }}>📊 {expensesView === "month" ? "この月" : "この週"}の経費をエクセルに書き出し</button>
                 {catList.length > 0 && (
                   <div style={{ background: "#fff", borderRadius: 14, padding: "14px 18px", marginBottom: 16, boxShadow: "0 2px 8px rgba(143,168,255,0.15)" }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: "#5C3344", marginBottom: 10 }}>📊 費目べつ内訳(この週)</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "#5C3344", marginBottom: 10 }}>📊 費目べつ内訳(この{expensesView === "month" ? "月" : "週"})</div>
                     {catList.map(([c, amt]) => {
                       const pct = weekExpenseTotal ? Math.round((amt / weekExpenseTotal) * 100) : 0;
                       return (
@@ -1099,9 +1158,10 @@ export default function CabShift() {
               })}
             </div>
 
-            {dates.map((d, i) => {
+            {expDates.map((d, i) => {
               const dateStr = d.toDateString();
-              const isWeekend = i >= 5;
+              const dayIdx = (d.getDay() + 6) % 7;
+              const isWeekend = dayIdx >= 5;
               const isToday = d.toDateString() === new Date().toDateString();
               const list = getExpenseList(dateStr);
               const dayTotal = list.reduce((s, e) => s + (Number(e.amount) || 0), 0);
@@ -1109,7 +1169,7 @@ export default function CabShift() {
                 <div key={i} style={{ background: "#fff", borderRadius: 14, padding: "14px 18px", marginBottom: 10, border: isToday ? "2px solid #FFC93C" : "2px solid transparent" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: list.length ? 10 : 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: isWeekend ? "#FF4D8D" : "#D4789F" }}>{DAYS[i]}</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: isWeekend ? "#FF4D8D" : "#D4789F" }}>{DAYS[dayIdx]}</div>
                       <div style={{ fontSize: 16, fontWeight: 800, color: isToday ? "#FFC93C" : "#5C3344" }}>{formatDate(d)}</div>
                       {dayTotal > 0 && <div style={{ fontSize: 12, color: "#8FA8FF", fontWeight: 700 }}>計 {formatYen(dayTotal)}</div>}
                     </div>
@@ -1142,7 +1202,8 @@ export default function CabShift() {
               );
             })}
           </div>
-        )}
+          );
+        })()}
 
         {tab === "summary" && (
           <div>
