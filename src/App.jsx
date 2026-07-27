@@ -315,6 +315,7 @@ export default function CabShift() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
   const [salesView, setSalesView] = useState("week");
+  const [rankKey, setRankKey] = useState("shimei");
   const [expensesView, setExpensesView] = useState("week");
   const [summaryMonth, setSummaryMonth] = useState(new Date().getMonth());
   const [summaryYear, setSummaryYear] = useState(new Date().getFullYear());
@@ -331,6 +332,8 @@ export default function CabShift() {
   const daysInMonth = new Date(summaryYear, summaryMonth + 1, 0).getDate();
   const monthDates = Array.from({ length: daysInMonth }, (_, i) => new Date(summaryYear, summaryMonth, i + 1));
   const monthStatTotal = (castId, key) => monthDates.reduce((sum, d) => sum + (Number(getStat(castId, d.toDateString())[key]) || 0), 0);
+  // 当日欠勤の月間回数
+  const monthKekkinTotal = (castId) => monthDates.reduce((sum, d) => sum + (getShift(castId, d.toDateString()).kekkin ? 1 : 0), 0);
   const STAT_ITEMS = [
     { key: "douhan", label: "本指名", color: "#FF6B6B", emoji: "💖" },
     { key: "shimei", label: "姫指名", color: "#FFC93C", emoji: "⭐" },
@@ -685,6 +688,9 @@ export default function CabShift() {
                               {hours && <span style={{ fontSize: 12, color: "#D4789F", fontWeight: 700 }}>{hours}h</span>}
                               <button onClick={() => openDetail(member.id, selStr)} style={{ background: "rgba(255,199,60,0.15)", border: "1px solid rgba(255,199,60,0.3)", borderRadius: 8, padding: "6px 8px", fontSize: 11, color: "#FFC93C", cursor: "pointer", fontWeight: 700, marginLeft: "auto" }}>本{stat.douhan} 姫{stat.shimei} 💰{stat.drink}</button>
                             </div>
+                          )}
+                          {!isOff && (
+                            <button onClick={() => updateShift(member.id, selStr, { kekkin: !s.kekkin })} style={{ marginTop: 6, border: s.kekkin ? "none" : "1px solid #FFD0D0", borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 800, cursor: "pointer", background: s.kekkin ? "linear-gradient(135deg, #FF7A7A, #FF5252)" : "#fff", color: s.kekkin ? "#fff" : "#FF8A8A" }}>{s.kekkin ? "🚫 当日欠勤(取消)" : "🚫 当日欠勤"}</button>
                           )}
                         </div>
                       );
@@ -1251,6 +1257,56 @@ export default function CabShift() {
                 </div>
               );
             })()}
+
+            {/* ランキング(本指名・姫指名・売上で切り替え) */}
+            {(() => {
+              const rankItems = [{ key: "douhan", label: "本指名", emoji: "💖" }, { key: "shimei", label: "姫指名", emoji: "⭐" }, { key: "sales", label: "売上", emoji: "💴" }];
+              const cur = rankItems.find((r) => r.key === rankKey) || rankItems[1];
+              const ranked = [...cast].map((c) => ({ c, v: monthStatTotal(c.id, rankKey) })).filter((x) => x.v > 0).sort((a, b) => b.v - a.v);
+              const medals = ["🥇", "🥈", "🥉"];
+              return (
+                <div style={{ background: "#fff", borderRadius: 14, padding: 16, marginBottom: 16, boxShadow: "0 2px 8px rgba(255,107,157,0.1)" }}>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: "#5C3344", marginBottom: 12 }}>🏆 ランキング</div>
+                  <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+                    {rankItems.map((r) => (
+                      <button key={r.key} onClick={() => setRankKey(r.key)} style={{ flex: 1, padding: "8px 0", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: "pointer", background: rankKey === r.key ? "linear-gradient(135deg, #FFB6D5, #FF8FAB)" : "#FFF0F5", color: rankKey === r.key ? "#fff" : "#D4789F" }}>{r.emoji}{r.label}</button>
+                    ))}
+                  </div>
+                  {ranked.length === 0 ? (
+                    <div style={{ textAlign: "center", fontSize: 12, color: "#FFB6D5", padding: "10px 0" }}>まだ{cur.label}の記録がありません</div>
+                  ) : ranked.map((x, i) => (
+                    <div key={x.c.id} style={{ display: "flex", alignItems: "center", gap: 10, background: i < 3 ? "#FFF9E8" : "#FFF5F8", borderRadius: 10, padding: "8px 12px", marginBottom: 6, border: i < 3 ? "1.5px solid #FFE9B0" : "1.5px solid transparent" }}>
+                      <div style={{ fontSize: i < 3 ? 20 : 14, fontWeight: 800, width: 30, textAlign: "center", color: "#D4789F" }}>{i < 3 ? medals[i] : i + 1}</div>
+                      <div style={{ flex: 1, fontWeight: 700, fontSize: 14, color: "#5C3344" }}>{x.c.name}</div>
+                      <div style={{ fontWeight: 800, fontSize: 17, color: "#FF6B9D" }}>{rankKey === "sales" ? formatYen(x.v) : x.v}</div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
+            {/* 当日欠勤 */}
+            {(() => {
+              const kekList = [...cast].map((c) => ({ c, n: monthKekkinTotal(c.id) })).filter((x) => x.n > 0).sort((a, b) => b.n - a.n);
+              const total = kekList.reduce((s, x) => s + x.n, 0);
+              return (
+                <div style={{ background: "#fff", borderRadius: 14, padding: 16, marginBottom: 16, boxShadow: "0 2px 8px rgba(255,107,157,0.1)" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: "#5C3344" }}>🚫 当日欠勤</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#FF6B6B" }}>今月 計{total}回</div>
+                  </div>
+                  {kekList.length === 0 ? (
+                    <div style={{ textAlign: "center", fontSize: 12, color: "#B8E6C8", padding: "6px 0" }}>今月の当日欠勤はありません 🌸</div>
+                  ) : kekList.map((x) => (
+                    <div key={x.c.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#FFF0F0", borderRadius: 10, padding: "8px 12px", marginBottom: 6 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: "#5C3344" }}>{x.c.name}</div>
+                      <div style={{ fontWeight: 800, fontSize: 16, color: "#FF6B6B" }}>{x.n}回</div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
             <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 2px 8px rgba(255,107,157,0.1)" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                 <div style={{ fontWeight: 700, fontSize: 15, color: "#5C3344" }}>📅 月間集計</div>
@@ -1473,6 +1529,11 @@ export default function CabShift() {
                     style={{ flex: 1, border: "none", background: "transparent", fontSize: 16, fontWeight: 700, color: "#5C3344", outline: "none" }}
                   />
                 </div>
+              </div>
+              <div style={{ borderTop: "1px solid #FFF0F5", paddingTop: 14, marginTop: 4, marginBottom: 8 }}>
+                <button onClick={() => updateShift(castId, dateStr, { kekkin: !getShift(castId, dateStr).kekkin })} style={{ width: "100%", border: getShift(castId, dateStr).kekkin ? "none" : "1.5px solid #FF9A9A", borderRadius: 10, padding: "10px 0", fontWeight: 800, fontSize: 14, cursor: "pointer", background: getShift(castId, dateStr).kekkin ? "linear-gradient(135deg, #FF7A7A, #FF5252)" : "#fff", color: getShift(castId, dateStr).kekkin ? "#fff" : "#FF6B6B" }}>
+                  {getShift(castId, dateStr).kekkin ? "🚫 当日欠勤(取り消すにはもう一度)" : "🚫 当日欠勤にする"}
+                </button>
               </div>
               <button onClick={closeDetail} style={{ width: "100%", background: "linear-gradient(135deg, #FF8FAB, #FF6B9D)", color: "#fff", border: "none", borderRadius: 10, padding: "12px 0", fontWeight: 700, fontSize: 15, cursor: "pointer", marginTop: 8 }}>閉じる</button>
             </div>
