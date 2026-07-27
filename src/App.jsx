@@ -447,6 +447,43 @@ export default function CabShift() {
     URL.revokeObjectURL(url);
   };
 
+  // LINEお知らせ用に書き出す(送信ツールが読み込むファイル)
+  // 各キャストの、指定期間のシフト内容(休みも含む)をまとめて出力する
+  const exportLineNotify = (dateList, label) => {
+    const pad = (n) => String(n).padStart(2, "0");
+    const WD = ["日", "月", "火", "水", "木", "金", "土"];
+    const list = cast.map((c) => {
+      const days = dateList.map((d) => {
+        const s = getShift(c.id, d.toDateString());
+        const working = s.status !== "off" && s.in && s.out;
+        return {
+          date: `${d.getMonth() + 1}/${d.getDate()}`,
+          weekday: WD[d.getDay()],
+          working,
+          in: working ? s.in : "",
+          out: working ? s.out : "",
+        };
+      });
+      const anyWork = days.some((x) => x.working);
+      return { castId: String(c.id), castName: c.name, anyWork, days };
+    });
+    const out = {
+      label,
+      periodStart: dateList[0] ? `${dateList[0].getFullYear()}-${pad(dateList[0].getMonth() + 1)}-${pad(dateList[0].getDate())}` : "",
+      periodEnd: dateList.length ? `${dateList[dateList.length - 1].getFullYear()}-${pad(dateList[dateList.length - 1].getMonth() + 1)}-${pad(dateList[dateList.length - 1].getDate())}` : "",
+      createdAt: Date.now(),
+      casts: list,
+    };
+    const json = JSON.stringify(out, null, 2);
+    const blob = new Blob([json], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `line_oshirase_${label}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const openDetail = (castId, dateStr) => setDetailModal({ castId, dateStr });
   const closeDetail = () => setDetailModal(null);
 
@@ -624,8 +661,9 @@ export default function CabShift() {
               <div style={{ fontWeight: 700, fontSize: 15 }}>{formatDate(dates[0])} 〜 {formatDate(dates[6])}</div>
               <button onClick={() => setWeekOffset((w) => w + 1)} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}>次週 →</button>
             </div>
-            <div style={{ textAlign: "right", marginBottom: 12 }}>
+            <div style={{ textAlign: "right", marginBottom: 12, display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
               <button onClick={() => { const pad = (n) => String(n).padStart(2, "0"); const l = `${dates[0].getFullYear()}-${pad(dates[0].getMonth() + 1)}-${pad(dates[0].getDate())}`; exportShiftCSV(dates, l); }} style={{ background: "linear-gradient(135deg, #7ED9A7, #4CBF87)", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", boxShadow: "0 2px 8px rgba(76,191,135,0.3)" }}>📥 この週をCSV書き出し</button>
+              <button onClick={() => { const pad = (n) => String(n).padStart(2, "0"); const l = `${dates[0].getFullYear()}-${pad(dates[0].getMonth() + 1)}-${pad(dates[0].getDate())}`; exportLineNotify(dates, l); }} style={{ background: "linear-gradient(135deg, #8FD0FF, #4AA8F0)", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", boxShadow: "0 2px 8px rgba(74,168,240,0.3)" }}>📢 LINEお知らせ用に書き出し</button>
             </div>
 
             {/* ===== スマホ用レイアウト:今日(選択日)を大きく表示 ===== */}
