@@ -1227,6 +1227,30 @@ export default function CabShift() {
 
         {tab === "summary" && (
           <div>
+            {(() => {
+              const monthSales = monthDates.reduce((sum, d) => sum + (Number((sales[d.toDateString()] || {}).amount) || 0), 0);
+              const monthExpense = monthDates.reduce((sum, d) => sum + getExpenseList(d.toDateString()).reduce((s, e) => s + (Number(e.amount) || 0), 0), 0);
+              const zankin = monthSales - monthExpense;
+              return (
+                <div style={{ background: zankin >= 0 ? "linear-gradient(135deg, #7ED9A7, #4CBF87)" : "linear-gradient(135deg, #FF9A9A, #FF6B6B)", borderRadius: 16, padding: "18px 22px", marginBottom: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.12)" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                    <div style={{ color: "#fff", fontSize: 13, fontWeight: 700 }}>{summaryYear}年{summaryMonth + 1}月の残金(売上 − 経費)</div>
+                    <div style={{ fontSize: 30 }}>{zankin >= 0 ? "💰" : "⚠️"}</div>
+                  </div>
+                  <div style={{ color: "#fff", fontSize: 32, fontWeight: 800 }}>{formatYen(zankin)}</div>
+                  <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+                    <div style={{ flex: 1, background: "rgba(255,255,255,0.22)", borderRadius: 10, padding: "8px 10px" }}>
+                      <div style={{ color: "#fff", fontSize: 11, fontWeight: 600, opacity: 0.95 }}>売上</div>
+                      <div style={{ color: "#fff", fontSize: 17, fontWeight: 800 }}>{formatYen(monthSales)}</div>
+                    </div>
+                    <div style={{ flex: 1, background: "rgba(255,255,255,0.22)", borderRadius: 10, padding: "8px 10px" }}>
+                      <div style={{ color: "#fff", fontSize: 11, fontWeight: 600, opacity: 0.95 }}>経費</div>
+                      <div style={{ color: "#fff", fontSize: 17, fontWeight: 800 }}>− {formatYen(monthExpense)}</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
             <div style={{ background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 2px 8px rgba(255,107,157,0.1)" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                 <div style={{ fontWeight: 700, fontSize: 15, color: "#5C3344" }}>📅 月間集計</div>
