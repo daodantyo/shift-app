@@ -216,20 +216,40 @@ export default function CabShift() {
     const nm = (now.getMonth() + 1) % 12;
     return dim(now.getFullYear(), now.getMonth()) - today + Math.min(d, dim(ny, nm));
   };
-  // 「経費に追加」ボタン: 今日の経費として記録する
-  const payToExpense = (r) => {
-    const dateStr = new Date().toDateString();
-    const id = "e" + Date.now();
-    updateExpenses({ ...expenses, [dateStr]: { ...(expenses[dateStr] || {}), [id]: { category: r.name || "固定費", amount: r.amount || "" } } });
-    // 今月ぶんを「支払った」チェック済みにする
-    const key = new Date().getFullYear() + "-" + (new Date().getMonth() + 1);
-    updateRecurring(r.id, { paid: { ...((settings.recurring || {})[r.id] || {}).paid, [key]: true } });
-    alert(`「${r.name || "固定費"}」を今日の経費に追加しました`);
-  };
-  // 今月ぶんが支払い済みか / チェックの切り替え
+  // 今月ぶんが支払い済みか
   const payKey = () => new Date().getFullYear() + "-" + (new Date().getMonth() + 1);
   const isPaidThisMonth = (r) => !!((r.paid || {})[payKey()]);
-  const togglePaid = (r) => updateRecurring(r.id, { paid: { ...(r.paid || {}), [payKey()]: !isPaidThisMonth(r) } });
+  // チェックを押したとき: ONにすると経費に自動で足す / OFFにすると足した経費を取り消す
+  const togglePaid = (r) => {
+    const key = payKey();
+    const cur = (r.paid || {})[key];
+    let newExpenses = expenses;
+    let newPaid = { ...(r.paid || {}) };
+    if (cur) {
+      // チェックを外す → 自動で足した経費を消す(古いデータで場所が無い場合はそのまま)
+      if (cur.d && cur.e && (expenses[cur.d] || {})[cur.e]) {
+        const day = { ...(expenses[cur.d] || {}) };
+        delete day[cur.e];
+        newExpenses = { ...expenses, [cur.d]: day };
+      }
+      delete newPaid[key];
+    } else {
+      // チェックを付ける → 支払日(今月)の経費として自動で足す
+      const now = new Date();
+      const dim = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      const d = Number(r.day) ? new Date(now.getFullYear(), now.getMonth(), Math.min(Number(r.day), dim)) : now;
+      const dateStr = d.toDateString();
+      const eid = "e" + Date.now();
+      newExpenses = { ...expenses, [dateStr]: { ...(expenses[dateStr] || {}), [eid]: { category: r.name || "固定費", amount: r.amount || "" } } };
+      newPaid[key] = { d: dateStr, e: eid };
+    }
+    const newSettings = { ...settings, recurring: { ...(settings.recurring || {}), [r.id]: { ...((settings.recurring || {})[r.id] || {}), paid: newPaid } } };
+    setExpenses(newExpenses);
+    setSettings(newSettings);
+    saveToFirebase({ cast, shifts, sales, stats, expenses: newExpenses, settings: newSettings });
+  };
+  // お知らせバナーの「経費に追加」ボタン(チェックONと同じ動き)
+  const payToExpense = (r) => { togglePaid(r); };
 
   const getShift = (castId, dateStr) => (shifts[castId] || {})[dateStr] || { status: "off", in: "", out: "" };
   const getStat = (castId, dateStr) => (stats[castId] || {})[dateStr] || { douhan: 0, shimei: 0, drink: 0 };
