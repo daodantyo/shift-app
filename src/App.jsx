@@ -128,6 +128,9 @@ export default function CabShift() {
   const [detailModal, setDetailModal] = useState(null);
   const [expandedStatCastId, setExpandedStatCastId] = useState(null);
   const [statEditDateStr, setStatEditDateStr] = useState(null);
+  const [castLine, setCastLine] = useState({}); // 名前↔LINE対応表
+  const [lineModal, setLineModal] = useState(null); // LINE送信モーダル
+  const [lineSending, setLineSending] = useState(false);
 
   // Load from Firebase
   useEffect(() => {
@@ -152,6 +155,15 @@ export default function CabShift() {
     const reqRef = ref(db, "shiftRequests");
     const unsub = onValue(reqRef, (snapshot) => {
       setRequests(snapshot.val() || {});
+    });
+    return () => unsub();
+  }, []);
+
+  // LINE対応表(名前↔LINE)の読み込み
+  useEffect(() => {
+    const clRef = ref(db, "castLine");
+    const unsub = onValue(clRef, (snapshot) => {
+      setCastLine(snapshot.val() || {});
     });
     return () => unsub();
   }, []);
@@ -484,6 +496,91 @@ export default function CabShift() {
     URL.revokeObjectURL(url);
   };
 
+  // 1人ぶんのLINE文面を組み立てる
+  const buildLineMessage = (castName, days) => {
+    const lines = [];
+    lines.push(`${castName}さん、来週のシフトが確定しました🌸`);
+    lines.push("");
+    days.forEach((d) => {
+      if (d.working) lines.push(`${d.date}(${d.weekday}) ${d.in}〜${d.out}`);
+      else lines.push(`${d.date}(${d.weekday}) 休み`);
+    });
+    lines.push("");
+    lines.push("よろしくお願いします🌸");
+    return lines.join("\n");
+  };
+
+  // LINE送信モーダルを開く:今見ている週のシフトを元に、送信対象リストを作る
+  const openLineModal = (dateList) => {
+    const WD = ["日", "月", "火", "水", "木", "金", "土"];
+    const rows = cast.map((c) => {
+      const days = dateList.map((d) => {
+        const s = getShift(c.id, d.toDateString());
+        const working = s.status !== "off" && s.in && s.out;
+        return {
+          date: `${d.getMonth() + 1}/${d.getDate()}`,
+          weekday: WD[d.getDay()],
+          working,
+          in: working ? s.in : "",
+          out: working ? s.out : "",
+        };
+      });
+      const link = castLine[String(c.id)];
+      return {
+        castId: String(c.id),
+        castName: c.name,
+        lineUserId: link && link.lineUserId ? link.lineUserId : null,
+        registered: !!(link && link.lineUserId),
+        days,
+        checked: !!(link && link.lineUserId), // 登録済みは初期チェックオン
+      };
+    });
+    setLineModal({ rows, dateList });
+  };
+
+  // モーダルの中で個別のチェックを切り替える
+  const toggleLineTarget = (castId) => {
+    setLineModal((m) => {
+      if (!m) return m;
+      const rows = m.rows.map((r) => r.castId === castId ? { ...r, checked: !r.checked } : r);
+      return { ...m, rows };
+    });
+  };
+
+  // 実際にLINE送信する(送信窓口 /api/send-line にお願いする)
+  const doSendLine = async () => {
+    if (!lineModal) return;
+    const targets = lineModal.rows.filter((r) => r.checked && r.registered);
+    if (targets.length === 0) {
+      alert("送る相手が選ばれていません。");
+      return;
+    }
+    if (!window.confirm(`${targets.length}人にLINEを送ります。よろしいですか?`)) return;
+    setLineSending(true);
+    try {
+      const messages = targets.map((r) => ({
+        to: r.lineUserId,
+        text: buildLineMessage(r.castName, r.days),
+      }));
+      const res = await fetch("/api/send-line", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages }),
+      });
+      const data = await res.json();
+      if (data && data.ok) {
+        alert(`送信完了！\n成功 ${data.success}人 / 失敗 ${data.fail}人`);
+        setLineModal(null);
+      } else {
+        alert("送信に失敗しました: " + (data && data.error ? data.error : "不明なエラー"));
+      }
+    } catch (e) {
+      alert("送信中にエラーが起きました: " + e);
+    } finally {
+      setLineSending(false);
+    }
+  };
+
   const openDetail = (castId, dateStr) => setDetailModal({ castId, dateStr });
   const closeDetail = () => setDetailModal(null);
 
@@ -664,6 +761,7 @@ export default function CabShift() {
             <div style={{ textAlign: "right", marginBottom: 12, display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
               <button onClick={() => { const pad = (n) => String(n).padStart(2, "0"); const l = `${dates[0].getFullYear()}-${pad(dates[0].getMonth() + 1)}-${pad(dates[0].getDate())}`; exportShiftCSV(dates, l); }} style={{ background: "linear-gradient(135deg, #7ED9A7, #4CBF87)", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", boxShadow: "0 2px 8px rgba(76,191,135,0.3)" }}>📥 この週をCSV書き出し</button>
               <button onClick={() => { const pad = (n) => String(n).padStart(2, "0"); const l = `${dates[0].getFullYear()}-${pad(dates[0].getMonth() + 1)}-${pad(dates[0].getDate())}`; exportLineNotify(dates, l); }} style={{ background: "linear-gradient(135deg, #8FD0FF, #4AA8F0)", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", boxShadow: "0 2px 8px rgba(74,168,240,0.3)" }}>📢 LINEお知らせ用に書き出し</button>
+              <button onClick={() => openLineModal(dates)} style={{ background: "linear-gradient(135deg, #06C755, #04A544)", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", boxShadow: "0 2px 8px rgba(6,199,85,0.3)" }}>📩 LINEで送信</button>
             </div>
 
             {/* ===== スマホ用レイアウト:今日(選択日)を大きく表示 ===== */}
@@ -1425,6 +1523,9 @@ export default function CabShift() {
                       <div style={{ fontSize: 11, marginTop: 3, fontWeight: 700, color: member.password ? "#c9971a" : "#FF6B6B" }}>
                         🔑 {member.password ? member.password : "パスワード未設定"}
                       </div>
+                      <div style={{ fontSize: 11, marginTop: 3, fontWeight: 700, color: castLine[String(member.id)]?.lineUserId ? "#04A544" : "#aaa" }}>
+                        {castLine[String(member.id)]?.lineUserId ? "📩 LINE登録済み" : "📩 LINE未登録"}
+                      </div>
                       <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
                         <span style={{ fontSize: 11, color: "#FF6B6B" }}>本指名 {totalStat(member.id, "douhan")}</span>
                         <span style={{ fontSize: 11, color: "#FFC93C" }}>姫指名 {totalStat(member.id, "shimei")}</span>
@@ -1533,6 +1634,51 @@ export default function CabShift() {
           </div>
         )}
       </div>
+
+      {lineModal && (() => {
+        const rows = lineModal.rows;
+        const registered = rows.filter((r) => r.registered);
+        const notRegistered = rows.filter((r) => !r.registered);
+        const checkedCount = rows.filter((r) => r.checked && r.registered).length;
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }} onClick={() => !lineSending && setLineModal(null)}>
+            <div style={{ background: "#fff", borderRadius: 20, padding: 24, width: 360, maxWidth: "92vw", maxHeight: "85vh", overflowY: "auto", border: "2px solid #06C755" }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 4, color: "#04A544" }}>📩 LINEで送信</div>
+              <div style={{ fontSize: 12, color: "#888", marginBottom: 14 }}>送る人にチェックを入れてください。この週のシフトが届きます。</div>
+
+              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                <button onClick={() => setLineModal((m) => ({ ...m, rows: m.rows.map((r) => r.registered ? { ...r, checked: true } : r) }))} style={{ flex: 1, fontSize: 12, padding: "6px 0", borderRadius: 8, border: "1px solid #06C755", background: "#fff", color: "#04A544", cursor: "pointer", fontWeight: 700 }}>全員チェック</button>
+                <button onClick={() => setLineModal((m) => ({ ...m, rows: m.rows.map((r) => ({ ...r, checked: false })) }))} style={{ flex: 1, fontSize: 12, padding: "6px 0", borderRadius: 8, border: "1px solid #ccc", background: "#fff", color: "#666", cursor: "pointer", fontWeight: 700 }}>全部はずす</button>
+              </div>
+
+              <div style={{ marginBottom: 12 }}>
+                {registered.map((r) => (
+                  <label key={r.castId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 6px", borderBottom: "1px solid #F3F3F3", cursor: "pointer" }}>
+                    <input type="checkbox" checked={r.checked} onChange={() => toggleLineTarget(r.castId)} style={{ width: 18, height: 18 }} />
+                    <span style={{ fontWeight: 600 }}>{r.castName}さん</span>
+                  </label>
+                ))}
+                {registered.length === 0 && (
+                  <div style={{ fontSize: 13, color: "#999", padding: "10px 0" }}>送れる人がまだいません。キャストさんに希望シフトを一度提出してもらってください。</div>
+                )}
+              </div>
+
+              {notRegistered.length > 0 && (
+                <div style={{ background: "#FFF6E5", borderRadius: 10, padding: "10px 12px", marginBottom: 14, fontSize: 12, color: "#9A7B3A" }}>
+                  <div style={{ fontWeight: 700, marginBottom: 4 }}>まだLINE未登録（{notRegistered.length}人）</div>
+                  <div>{notRegistered.map((r) => r.castName).join("、")}</div>
+                  <div style={{ marginTop: 4 }}>希望シフトを一度提出すると送れるようになります。</div>
+                </div>
+              )}
+
+              <button onClick={doSendLine} disabled={lineSending || checkedCount === 0} style={{ width: "100%", background: lineSending || checkedCount === 0 ? "#B7E4C7" : "linear-gradient(135deg, #06C755, #04A544)", color: "#fff", border: "none", borderRadius: 12, padding: "13px 0", fontWeight: 800, fontSize: 15, cursor: lineSending || checkedCount === 0 ? "default" : "pointer", marginBottom: 8 }}>
+                {lineSending ? "送信中..." : `この${checkedCount}人に送信する`}
+              </button>
+              <button onClick={() => !lineSending && setLineModal(null)} style={{ width: "100%", background: "#fff", color: "#888", border: "1px solid #ddd", borderRadius: 12, padding: "10px 0", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>閉じる</button>
+            </div>
+          </div>
+        );
+      })()}
 
       {detailModal && (() => {
         const { castId, dateStr } = detailModal;
