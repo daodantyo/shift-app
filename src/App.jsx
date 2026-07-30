@@ -297,7 +297,16 @@ export default function CabShift() {
 
   const formatDate = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
   const weekSales = dates.reduce((sum, d) => sum + (Number((sales[d.toDateString()] || {}).amount) || 0), 0);
-  const totalStat = (castId, key) => dates.reduce((sum, d) => sum + (Number(getStat(castId, d.toDateString())[key]) || 0), 0);
+  const totalStat = (castId, key) => {
+    // 「売上」は、入力された個人売上に雑費(金額)を合算して表示する
+    if (key === "sales") {
+      return dates.reduce((sum, d) => {
+        const s = getStat(castId, d.toDateString());
+        return sum + (Number(s.sales) || 0) + (Number(s.drink) || 0);
+      }, 0);
+    }
+    return dates.reduce((sum, d) => sum + (Number(getStat(castId, d.toDateString())[key]) || 0), 0);
+  };
   const rankColor = (rank) => {
     if (RANK_COLORS[rank]) return RANK_COLORS[rank];
     if (!rank) return "#888";
@@ -343,7 +352,15 @@ export default function CabShift() {
 
   const daysInMonth = new Date(summaryYear, summaryMonth + 1, 0).getDate();
   const monthDates = Array.from({ length: daysInMonth }, (_, i) => new Date(summaryYear, summaryMonth, i + 1));
-  const monthStatTotal = (castId, key) => monthDates.reduce((sum, d) => sum + (Number(getStat(castId, d.toDateString())[key]) || 0), 0);
+  const monthStatTotal = (castId, key) => {
+    if (key === "sales") {
+      return monthDates.reduce((sum, d) => {
+        const s = getStat(castId, d.toDateString());
+        return sum + (Number(s.sales) || 0) + (Number(s.drink) || 0);
+      }, 0);
+    }
+    return monthDates.reduce((sum, d) => sum + (Number(getStat(castId, d.toDateString())[key]) || 0), 0);
+  };
   // 当日欠勤の月間回数
   const monthKekkinTotal = (castId) => monthDates.reduce((sum, d) => sum + (getShift(castId, d.toDateString()).kekkin ? 1 : 0), 0);
   const STAT_ITEMS = [
@@ -374,7 +391,8 @@ export default function CabShift() {
       }
       members.forEach((c, i) => {
         const s = getStat(c.id, dateStr);
-        rows.push([ymd, youbi, i === 0 ? shopAmount : "", c.name, Number(s.sales) || 0, Number(s.douhan) || 0, Number(s.shimei) || 0, Number(s.drink) || 0]);
+        const castSales = (Number(s.sales) || 0) + (Number(s.drink) || 0);
+        rows.push([ymd, youbi, i === 0 ? shopAmount : "", c.name, castSales, Number(s.douhan) || 0, Number(s.shimei) || 0, Number(s.drink) || 0]);
       });
     });
     if (rows.length === 1) {
