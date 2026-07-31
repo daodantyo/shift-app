@@ -778,6 +778,7 @@ export default function CabShift() {
             </div>
             <div style={{ textAlign: "right", marginBottom: 12, display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
               <button onClick={() => { const pad = (n) => String(n).padStart(2, "0"); const l = `${dates[0].getFullYear()}-${pad(dates[0].getMonth() + 1)}-${pad(dates[0].getDate())}`; exportShiftCSV(dates, l); }} style={{ background: "linear-gradient(135deg, #7ED9A7, #4CBF87)", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", boxShadow: "0 2px 8px rgba(76,191,135,0.3)" }}>📥 この週をCSV書き出し</button>
+              <button onClick={() => { const pad = (n) => String(n).padStart(2, "0"); const l = `${dates[0].getFullYear()}-${pad(dates[0].getMonth() + 1)}-${pad(dates[0].getDate())}`; exportShiftCSV(dates, l); }} style={{ background: "linear-gradient(135deg, #C9A0FF, #9B6DE0)", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", boxShadow: "0 2px 8px rgba(155,109,224,0.3)" }}>🔄 Venrey用に書き出し</button>
               <button onClick={() => openLineModal(dates)} style={{ background: "linear-gradient(135deg, #06C755, #04A544)", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", boxShadow: "0 2px 8px rgba(6,199,85,0.3)" }}>📩 LINEで送信</button>
             </div>
 
