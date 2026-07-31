@@ -1070,7 +1070,7 @@ export default function CabShift() {
                         <div style={{ display: "flex", gap: 8 }}>
                           {[{ key: "douhan", label: "本指名", color: "#FF6B6B" }, { key: "shimei", label: "姫指名", color: "#FFC93C" }, { key: "drink", label: "雑費", color: "#5DC9E2" }].map(({ key, label, color }) => (
                             <div key={key} style={{ textAlign: "center", background: `${color}22`, borderRadius: 8, padding: "4px 10px" }}>
-                              <div style={{ fontSize: 16, fontWeight: 800, color }}>{totalStat(member.id, key)}</div>
+                              <div style={{ fontSize: 16, fontWeight: 800, color }}>{key === "drink" ? formatYen(totalStat(member.id, key)) : totalStat(member.id, key)}</div>
                               <div style={{ fontSize: 9, color: "#D4789F" }}>{label}</div>
                             </div>
                           ))}
@@ -1103,7 +1103,7 @@ export default function CabShift() {
                               })}
                             </div>
 
-                            {[{ key: "douhan", label: "本指名", color: "#FF6B6B", emoji: "💖" }, { key: "shimei", label: "姫指名", color: "#FFC93C", emoji: "⭐" }, { key: "drink", label: "雑費", color: "#5DC9E2", emoji: "💰" }].map(({ key, label, color, emoji }) => (
+                            {[{ key: "douhan", label: "本指名", color: "#FF6B6B", emoji: "💖" }, { key: "shimei", label: "姫指名", color: "#FFC93C", emoji: "⭐" }].map(({ key, label, color, emoji }) => (
                               <div key={key} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                                 <div style={{ fontSize: 16 }}>{emoji}</div>
                                 <div style={{ flex: 1, fontWeight: 600, fontSize: 13 }}>{label}</div>
@@ -1112,6 +1112,21 @@ export default function CabShift() {
                                 <button onClick={() => updateStat(member.id, editDateStr, { [key]: (editStat[key] || 0) + 1 })} style={{ width: 28, height: 28, border: "none", borderRadius: 8, background: color, color: "#fff", fontSize: 16, cursor: "pointer", fontWeight: 700 }}>＋</button>
                               </div>
                             ))}
+
+                            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                              <div style={{ fontSize: 16 }}>💰</div>
+                              <div style={{ flex: 1, fontWeight: 600, fontSize: 13 }}>雑費</div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 4, background: "#fff", borderRadius: 8, padding: "6px 10px", border: "1.5px solid #BEE9F3" }}>
+                                <span style={{ fontSize: 13, fontWeight: 700, color: "#5DC9E2" }}>¥</span>
+                                <input
+                                  type="number"
+                                  placeholder="0"
+                                  value={editStat.drink || ""}
+                                  onChange={(e) => updateStat(member.id, editDateStr, { drink: e.target.value })}
+                                  style={{ width: 90, border: "none", background: "transparent", fontSize: 14, fontWeight: 700, color: "#5C3344", outline: "none" }}
+                                />
+                              </div>
+                            </div>
 
                             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                               <div style={{ fontSize: 16 }}>💴</div>
@@ -1483,7 +1498,7 @@ export default function CabShift() {
                     <div style={{ fontSize: 10, color: rankColor(member.rank) }}>{member.rank}</div>
                   </div>
                   {STAT_ITEMS.map(({ key, color }) => (
-                    <div key={key} style={{ textAlign: "center", fontWeight: 800, fontSize: 20, color }}>{monthStatTotal(member.id, key)}</div>
+                    <div key={key} style={{ textAlign: "center", fontWeight: 800, fontSize: 20, color }}>{key === "drink" ? formatYen(monthStatTotal(member.id, key)) : monthStatTotal(member.id, key)}</div>
                   ))}
                 </div>
               ))}
@@ -1491,7 +1506,7 @@ export default function CabShift() {
                 <div style={{ fontWeight: 700, fontSize: 12, color: "#D4789F" }}>合計</div>
                 {STAT_ITEMS.map(({ key, color }) => (
                   <div key={key} style={{ textAlign: "center", fontWeight: 800, fontSize: 20, color }}>
-                    {cast.reduce((sum, m) => sum + monthStatTotal(m.id, key), 0)}
+                    {key === "drink" ? formatYen(cast.reduce((sum, m) => sum + monthStatTotal(m.id, key), 0)) : cast.reduce((sum, m) => sum + monthStatTotal(m.id, key), 0)}
                   </div>
                 ))}
               </div>
@@ -1547,7 +1562,7 @@ export default function CabShift() {
                       <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
                         <span style={{ fontSize: 11, color: "#FF6B6B" }}>本指名 {totalStat(member.id, "douhan")}</span>
                         <span style={{ fontSize: 11, color: "#FFC93C" }}>姫指名 {totalStat(member.id, "shimei")}</span>
-                        <span style={{ fontSize: 11, color: "#5DC9E2" }}>雑費 {totalStat(member.id, "drink")}</span>
+                        <span style={{ fontSize: 11, color: "#5DC9E2" }}>雑費 {formatYen(totalStat(member.id, "drink"))}</span>
                       </div>
                     </div>
                     <button onClick={() => setEditingCast({ ...member })} style={{ background: "#FFF0F5", border: "none", borderRadius: 8, padding: "8px 14px", cursor: "pointer", color: "#FF6B9D", fontWeight: 600, fontSize: 13 }}>編集</button>
@@ -1707,7 +1722,7 @@ export default function CabShift() {
             <div style={{ background: "#fff", borderRadius: 20, padding: 28, minWidth: 300, border: "2px solid #FF8FAB" }} onClick={(e) => e.stopPropagation()}>
               <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 6 }}>{member?.name}</div>
               <div style={{ fontSize: 12, color: "#D4789F", marginBottom: 20 }}>{dateStr}</div>
-              {[{ key: "douhan", label: "本指名", color: "#FF6B6B", emoji: "💖" }, { key: "shimei", label: "姫指名", color: "#FFC93C", emoji: "⭐" }, { key: "drink", label: "雑費", color: "#5DC9E2", emoji: "💰" }].map(({ key, label, color, emoji }) => (
+              {[{ key: "douhan", label: "本指名", color: "#FF6B6B", emoji: "💖" }, { key: "shimei", label: "姫指名", color: "#FFC93C", emoji: "⭐" }].map(({ key, label, color, emoji }) => (
                 <div key={key} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
                   <div style={{ fontSize: 20 }}>{emoji}</div>
                   <div style={{ flex: 1, fontWeight: 600 }}>{label}</div>
@@ -1716,6 +1731,20 @@ export default function CabShift() {
                   <button onClick={() => updateStat(castId, dateStr, { [key]: (stat[key] || 0) + 1 })} style={{ width: 32, height: 32, border: "none", borderRadius: 8, background: color, color: "#fff", fontSize: 18, cursor: "pointer", fontWeight: 700 }}>＋</button>
                 </div>
               ))}
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                <div style={{ fontSize: 20 }}>💰</div>
+                <div style={{ flex: 1, fontWeight: 600 }}>雑費</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#F2FBFD", borderRadius: 10, padding: "8px 12px", border: "1.5px solid #BEE9F3", width: 130 }}>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: "#5DC9E2" }}>¥</span>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={stat.drink || ""}
+                    onChange={(e) => updateStat(castId, dateStr, { drink: e.target.value })}
+                    style={{ flex: 1, width: 60, border: "none", background: "transparent", fontSize: 16, fontWeight: 700, color: "#5C3344", outline: "none" }}
+                  />
+                </div>
+              </div>
               <div style={{ borderTop: "1px solid #FFF0F5", paddingTop: 14, marginTop: 4, marginBottom: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ fontSize: 20 }}>💴</div>
