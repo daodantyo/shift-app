@@ -297,7 +297,12 @@ export default function CabShift() {
   };
 
   const formatDate = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
-  const weekSales = dates.reduce((sum, d) => sum + (Number((sales[d.toDateString()] || {}).amount) || 0), 0);
+  // その日の売上 = 全キャストの「個人売上 + 雑費」の合計(手入力は廃止、自動計算)
+  const dayAutoSales = (dateStr) => cast.reduce((sum, c) => {
+    const s = getStat(c.id, dateStr);
+    return sum + (Number(s.sales) || 0) + (Number(s.drink) || 0);
+  }, 0);
+  const weekSales = dates.reduce((sum, d) => sum + dayAutoSales(d.toDateString()), 0);
   const totalStat = (castId, key) => dates.reduce((sum, d) => sum + (Number(getStat(castId, d.toDateString())[key]) || 0), 0);
   const rankColor = (rank) => {
     if (RANK_COLORS[rank]) return RANK_COLORS[rank];
@@ -362,7 +367,7 @@ export default function CabShift() {
       const dateStr = d.toDateString();
       const ymd = `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())}`;
       const youbi = DAYS[(d.getDay() + 6) % 7];
-      const shopAmount = Number((sales[dateStr] || {}).amount) || 0;
+      const shopAmount = dayAutoSales(dateStr);
       grand += shopAmount;
       // その日に数字が入っているキャストだけを書き出す
       const members = cast.filter((c) => {
@@ -1024,7 +1029,7 @@ export default function CabShift() {
                   const selStr = daySumDateStr || dates[0].toDateString();
                   const dayDrink = cast.reduce((sum, c) => sum + (Number(getStat(c.id, selStr).drink) || 0), 0);
                   const daySales = cast.reduce((sum, c) => sum + (Number(getStat(c.id, selStr).sales) || 0), 0);
-                  const dayShop = Number((sales[selStr] || {}).amount) || 0;
+                  const dayShop = dayAutoSales(selStr);
                   const dayTotal = daySales + dayDrink;
                   return (
                     <div style={{ background: "#fff", borderRadius: 14, padding: 16, marginBottom: 16 }}>
@@ -1184,7 +1189,8 @@ export default function CabShift() {
                         <div style={{ flex: 1 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#FFF5F8", borderRadius: 10, padding: "8px 12px", border: "1.5px solid #FFD9E8" }}>
                             <span style={{ fontSize: 16, fontWeight: 700, color: "#FFB6D5" }}>¥</span>
-                            <input type="number" placeholder="売上を入力" value={dayData.amount || ""} onChange={(e) => updateSales({ ...sales, [dateStr]: { ...(sales[dateStr] || {}), amount: e.target.value } })} style={{ flex: 1, border: "none", background: "transparent", fontSize: 18, fontWeight: 700, color: "#5C3344", outline: "none" }} />
+                            <div style={{ flex: 1, fontSize: 18, fontWeight: 700, color: "#5C3344" }}>{(dayAutoSales(dateStr)).toLocaleString()}</div>
+                            <span style={{ fontSize: 10, color: "#D4789F" }}>自動</span>
                           </div>
                         </div>
                         <div style={{ textAlign: "right", minWidth: 70 }}>
@@ -1206,7 +1212,7 @@ export default function CabShift() {
                   <button onClick={nextMonth} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}>次月 →</button>
                 </div>
                 {(() => {
-                  const monthTotal = monthDates.reduce((sum, d) => sum + (Number((sales[d.toDateString()] || {}).amount) || 0), 0);
+                  const monthTotal = monthDates.reduce((sum, d) => sum + dayAutoSales(d.toDateString()), 0);
                   return (
                     <div style={{ background: "linear-gradient(135deg, #FFB6D5, #FF8FAB)", borderRadius: 14, padding: "20px 24px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <div>
@@ -1254,7 +1260,9 @@ export default function CabShift() {
                         <div style={{ flex: 1 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#FFF5F8", borderRadius: 10, padding: "6px 12px", border: "1.5px solid #FFD9E8" }}>
                             <span style={{ fontSize: 14, fontWeight: 700, color: "#FFB6D5" }}>¥</span>
-                            <input type="number" placeholder="売上を入力" value={dayData.amount || ""} onChange={(e) => updateSales({ ...sales, [dateStr]: { ...(sales[dateStr] || {}), amount: e.target.value } })} style={{ flex: 1, border: "none", background: "transparent", fontSize: 16, fontWeight: 700, color: "#5C3344", outline: "none" }} />
+                            <input type="number" placeholder="売上を入力" value={dayData.amount || ""} onChange={(e) => updateSales({ ...sales, [dateStr]: { ...(sales[dateStr] || {}), amount: e.target.value } })} style={{ display: "none" }} />
+                            <div style={{ flex: 1, fontSize: 16, fontWeight: 700, color: "#5C3344" }}>{(dayAutoSales(dateStr)).toLocaleString()}</div>
+                            <span style={{ fontSize: 10, color: "#D4789F" }}>自動</span>
                           </div>
                         </div>
                         <div style={{ textAlign: "right", minWidth: 60 }}>
@@ -1442,7 +1450,7 @@ export default function CabShift() {
         {tab === "summary" && (
           <div>
             {(() => {
-              const monthSales = monthDates.reduce((sum, d) => sum + (Number((sales[d.toDateString()] || {}).amount) || 0), 0);
+              const monthSales = monthDates.reduce((sum, d) => sum + dayAutoSales(d.toDateString()), 0);
               const monthExpense = monthDates.reduce((sum, d) => sum + getExpenseList(d.toDateString()).reduce((s, e) => s + (Number(e.amount) || 0), 0), 0);
               const zankin = monthSales - monthExpense;
               return (
