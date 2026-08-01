@@ -1096,6 +1096,21 @@ export default function CabShift() {
                               </div>
                             ))}
 
+                            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                              <div style={{ fontSize: 16 }}>💰</div>
+                              <div style={{ flex: 1, fontWeight: 600, fontSize: 13 }}>雑費</div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 4, background: "#fff", borderRadius: 8, padding: "6px 10px", border: "1.5px solid #BEE9F3" }}>
+                                <span style={{ fontSize: 13, fontWeight: 700, color: "#5DC9E2" }}>¥</span>
+                                <input
+                                  type="number"
+                                  placeholder="0"
+                                  value={editStat.drink || ""}
+                                  onChange={(e) => updateStat(member.id, editDateStr, { drink: e.target.value })}
+                                  style={{ width: 90, border: "none", background: "transparent", fontSize: 14, fontWeight: 700, color: "#5C3344", outline: "none" }}
+                                />
+                              </div>
+                            </div>
+
                             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                               <div style={{ fontSize: 16 }}>💴</div>
                               <div style={{ flex: 1, fontWeight: 600, fontSize: 13 }}>個人売上</div>
@@ -1699,6 +1714,22 @@ export default function CabShift() {
                   <button onClick={() => updateStat(castId, dateStr, { [key]: (stat[key] || 0) + 1 })} style={{ width: 32, height: 32, border: "none", borderRadius: 8, background: color, color: "#fff", fontSize: 18, cursor: "pointer", fontWeight: 700 }}>＋</button>
                 </div>
               ))}
+              <div style={{ borderTop: "1px solid #FFF0F5", paddingTop: 14, marginTop: 4, marginBottom: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ fontSize: 20 }}>💰</div>
+                  <div style={{ flex: 1, fontWeight: 600 }}>雑費</div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#F2FBFD", borderRadius: 10, padding: "8px 12px", border: "1.5px solid #BEE9F3", marginTop: 8 }}>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: "#5DC9E2" }}>¥</span>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={stat.drink || ""}
+                    onChange={(e) => updateStat(castId, dateStr, { drink: e.target.value })}
+                    style={{ flex: 1, border: "none", background: "transparent", fontSize: 16, fontWeight: 700, color: "#5C3344", outline: "none" }}
+                  />
+                </div>
+              </div>
               <div style={{ borderTop: "1px solid #FFF0F5", paddingTop: 14, marginTop: 4, marginBottom: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ fontSize: 20 }}>💴</div>
