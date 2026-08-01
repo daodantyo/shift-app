@@ -1217,6 +1217,25 @@ export default function CabShift() {
                     </div>
                   );
                 })()}
+
+                {(() => {
+                  const monthDrink = cast.reduce((sum, c) => sum + monthDates.reduce((s2, d) => s2 + (Number(getStat(c.id, d.toDateString()).drink) || 0), 0), 0);
+                  const monthPersonalSales = cast.reduce((sum, c) => sum + monthDates.reduce((s2, d) => s2 + (Number(getStat(c.id, d.toDateString()).sales) || 0), 0), 0);
+                  const monthGrand = monthPersonalSales + monthDrink;
+                  return (
+                    <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+                      <div style={{ flex: 1, background: "#F2FBFD", borderRadius: 12, padding: "14px 10px", textAlign: "center" }}>
+                        <div style={{ fontSize: 12, color: "#5DC9E2", fontWeight: 700, marginBottom: 4 }}>💰 今月の雑費合計</div>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: "#3FA9C4" }}>{formatYen(monthDrink)}</div>
+                      </div>
+                      <div style={{ flex: 1, background: "linear-gradient(135deg, #FFF0F5, #FFE4EF)", borderRadius: 12, padding: "14px 10px", textAlign: "center" }}>
+                        <div style={{ fontSize: 12, color: "#FF6B9D", fontWeight: 700, marginBottom: 4 }}>💴 今月の総合合計</div>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: "#FF4D8D" }}>{formatYen(monthGrand)}</div>
+                        <div style={{ fontSize: 9, color: "#D4789F", marginTop: 2 }}>売上{formatYen(monthPersonalSales)}＋雑費{formatYen(monthDrink)}</div>
+                      </div>
+                    </div>
+                  );
+                })()}
                 <button onClick={() => exportSalesCSV(monthDates, `${summaryYear}-${String(summaryMonth + 1).padStart(2, "0")}`)} style={{ width: "100%", background: "linear-gradient(135deg, #7ED9A7, #4CBF87)", border: "none", borderRadius: 10, padding: "12px 16px", cursor: "pointer", fontWeight: 700, fontSize: 14, color: "#fff", marginBottom: 16, boxShadow: "0 2px 8px rgba(76,191,135,0.3)" }}>📊 この月の売上をエクセルに書き出し</button>
                 {monthDates.map((d, i) => {
                   const dateStr = d.toDateString();
