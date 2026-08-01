@@ -131,6 +131,7 @@ export default function CabShift() {
   const [castLine, setCastLine] = useState({}); // 名前↔LINE対応表
   const [lineModal, setLineModal] = useState(null); // LINE送信モーダル
   const [lineSending, setLineSending] = useState(false);
+  const [daySumDateStr, setDaySumDateStr] = useState(null); // その日の合計を見る日
 
   // Load from Firebase
   useEffect(() => {
@@ -1018,6 +1019,42 @@ export default function CabShift() {
                   </div>
                   <div style={{ fontSize: 36 }}>💎</div>
                 </div>
+
+                {(() => {
+                  const selStr = daySumDateStr || dates[0].toDateString();
+                  const dayDrink = cast.reduce((sum, c) => sum + (Number(getStat(c.id, selStr).drink) || 0), 0);
+                  const daySales = cast.reduce((sum, c) => sum + (Number(getStat(c.id, selStr).sales) || 0), 0);
+                  const dayShop = Number((sales[selStr] || {}).amount) || 0;
+                  const dayTotal = daySales + dayDrink;
+                  return (
+                    <div style={{ background: "#fff", borderRadius: 14, padding: 16, marginBottom: 16 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: "#5C3344", marginBottom: 10 }}>📅 日ごとの合計</div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+                        {dates.map((d) => {
+                          const ds = d.toDateString();
+                          const active = ds === selStr;
+                          const WD = ["日", "月", "火", "水", "木", "金", "土"];
+                          return (
+                            <button key={ds} onClick={() => setDaySumDateStr(ds)} style={{ flex: "1 1 40px", padding: "6px 0", border: active ? "none" : "1px solid #FFD9E8", borderRadius: 8, background: active ? "linear-gradient(135deg, #FFB6D5, #FF8FAB)" : "#fff", color: active ? "#fff" : "#D4789F", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                              {d.getMonth() + 1}/{d.getDate()}<br />({WD[d.getDay()]})
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div style={{ display: "flex", gap: 10 }}>
+                        <div style={{ flex: 1, background: "#F2FBFD", borderRadius: 12, padding: "12px 10px", textAlign: "center" }}>
+                          <div style={{ fontSize: 11, color: "#5DC9E2", fontWeight: 700, marginBottom: 4 }}>💰 雑費合計</div>
+                          <div style={{ fontSize: 20, fontWeight: 800, color: "#3FA9C4" }}>{formatYen(dayDrink)}</div>
+                        </div>
+                        <div style={{ flex: 1, background: "linear-gradient(135deg, #FFF0F5, #FFE4EF)", borderRadius: 12, padding: "12px 10px", textAlign: "center" }}>
+                          <div style={{ fontSize: 11, color: "#FF6B9D", fontWeight: 700, marginBottom: 4 }}>💴 総合合計</div>
+                          <div style={{ fontSize: 20, fontWeight: 800, color: "#FF4D8D" }}>{formatYen(dayTotal)}</div>
+                          <div style={{ fontSize: 9, color: "#D4789F", marginTop: 2 }}>売上{formatYen(daySales)}＋雑費{formatYen(dayDrink)}</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
                 <button onClick={() => { const pad = (n) => String(n).padStart(2, "0"); exportSalesCSV(dates, `${dates[0].getFullYear()}-${pad(dates[0].getMonth() + 1)}-${pad(dates[0].getDate())}`); }} style={{ width: "100%", background: "linear-gradient(135deg, #7ED9A7, #4CBF87)", border: "none", borderRadius: 10, padding: "12px 16px", cursor: "pointer", fontWeight: 700, fontSize: 14, color: "#fff", marginBottom: 16, boxShadow: "0 2px 8px rgba(76,191,135,0.3)" }}>📊 この週の売上をエクセルに書き出し</button>
                 <div style={{ background: "#fff", borderRadius: 14, padding: 16, marginBottom: 16 }}>
                   <div style={{ fontWeight: 700, fontSize: 14, color: "#5C3344", marginBottom: 4 }}>キャスト週間成績</div>
