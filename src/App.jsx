@@ -297,16 +297,7 @@ export default function CabShift() {
 
   const formatDate = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
   const weekSales = dates.reduce((sum, d) => sum + (Number((sales[d.toDateString()] || {}).amount) || 0), 0);
-  const totalStat = (castId, key) => {
-    // 「売上」は、入力された個人売上に雑費(金額)を合算して表示する
-    if (key === "sales") {
-      return dates.reduce((sum, d) => {
-        const s = getStat(castId, d.toDateString());
-        return sum + (Number(s.sales) || 0) + (Number(s.drink) || 0);
-      }, 0);
-    }
-    return dates.reduce((sum, d) => sum + (Number(getStat(castId, d.toDateString())[key]) || 0), 0);
-  };
+  const totalStat = (castId, key) => dates.reduce((sum, d) => sum + (Number(getStat(castId, d.toDateString())[key]) || 0), 0);
   const rankColor = (rank) => {
     if (RANK_COLORS[rank]) return RANK_COLORS[rank];
     if (!rank) return "#888";
@@ -352,27 +343,19 @@ export default function CabShift() {
 
   const daysInMonth = new Date(summaryYear, summaryMonth + 1, 0).getDate();
   const monthDates = Array.from({ length: daysInMonth }, (_, i) => new Date(summaryYear, summaryMonth, i + 1));
-  const monthStatTotal = (castId, key) => {
-    if (key === "sales") {
-      return monthDates.reduce((sum, d) => {
-        const s = getStat(castId, d.toDateString());
-        return sum + (Number(s.sales) || 0) + (Number(s.drink) || 0);
-      }, 0);
-    }
-    return monthDates.reduce((sum, d) => sum + (Number(getStat(castId, d.toDateString())[key]) || 0), 0);
-  };
+  const monthStatTotal = (castId, key) => monthDates.reduce((sum, d) => sum + (Number(getStat(castId, d.toDateString())[key]) || 0), 0);
   // 当日欠勤の月間回数
   const monthKekkinTotal = (castId) => monthDates.reduce((sum, d) => sum + (getShift(castId, d.toDateString()).kekkin ? 1 : 0), 0);
   const STAT_ITEMS = [
     { key: "douhan", label: "本指名", color: "#FF6B6B", emoji: "💖" },
     { key: "shimei", label: "姫指名", color: "#FFC93C", emoji: "⭐" },
-    { key: "drink", label: "雑費", color: "#5DC9E2", emoji: "💰" },
+    { key: "kekkin", label: "当日欠勤", color: "#FF7A7A", emoji: "🚫" },
   ];
 
   // 売上をCSVでダウンロードする(Excelでそのまま開けます)
   const exportSalesCSV = (dateList, label) => {
     const pad = (n) => String(n).padStart(2, "0");
-    const rows = [["日付", "曜日", "店舗売上", "キャスト名", "キャスト売上", "本指名", "姫指名", "雑費"]];
+    const rows = [["日付", "曜日", "店舗売上", "キャスト名", "キャスト売上", "本指名", "姫指名", "当日欠勤"]];
     let grand = 0;
     dateList.forEach((d) => {
       const dateStr = d.toDateString();
@@ -383,7 +366,7 @@ export default function CabShift() {
       // その日に数字が入っているキャストだけを書き出す
       const members = cast.filter((c) => {
         const s = getStat(c.id, dateStr);
-        return (Number(s.sales) || 0) || (Number(s.douhan) || 0) || (Number(s.shimei) || 0) || (Number(s.drink) || 0);
+        return (Number(s.sales) || 0) || (Number(s.douhan) || 0) || (Number(s.shimei) || 0) || (getShift(c.id, dateStr).kekkin ? 1 : 0);
       });
       if (members.length === 0) {
         if (shopAmount) rows.push([ymd, youbi, shopAmount, "", "", "", "", ""]);
@@ -391,8 +374,8 @@ export default function CabShift() {
       }
       members.forEach((c, i) => {
         const s = getStat(c.id, dateStr);
-        const castSales = (Number(s.sales) || 0) + (Number(s.drink) || 0);
-        rows.push([ymd, youbi, i === 0 ? shopAmount : "", c.name, castSales, Number(s.douhan) || 0, Number(s.shimei) || 0, Number(s.drink) || 0]);
+        const kekkinFlag = getShift(c.id, dateStr).kekkin ? 1 : 0;
+        rows.push([ymd, youbi, i === 0 ? shopAmount : "", c.name, Number(s.sales) || 0, Number(s.douhan) || 0, Number(s.shimei) || 0, kekkinFlag]);
       });
     });
     if (rows.length === 1) {
@@ -840,7 +823,7 @@ export default function CabShift() {
                               <span style={{ color: "#D4789F", fontWeight: 700 }}>〜</span>
                               <div style={{ width: 108 }}><TimeSelect value={s.out || ""} onChange={(v) => updateShift(member.id, selStr, { out: v })} style={{ fontSize: 14, padding: "6px 2px" }} /></div>
                               {hours && <span style={{ fontSize: 12, color: "#D4789F", fontWeight: 700 }}>{hours}h</span>}
-                              <button onClick={() => openDetail(member.id, selStr)} style={{ background: "rgba(255,199,60,0.15)", border: "1px solid rgba(255,199,60,0.3)", borderRadius: 8, padding: "6px 8px", fontSize: 11, color: "#FFC93C", cursor: "pointer", fontWeight: 700, marginLeft: "auto" }}>本{stat.douhan} 姫{stat.shimei} 💰{stat.drink}</button>
+                              <button onClick={() => openDetail(member.id, selStr)} style={{ background: "rgba(255,199,60,0.15)", border: "1px solid rgba(255,199,60,0.3)", borderRadius: 8, padding: "6px 8px", fontSize: 11, color: "#FFC93C", cursor: "pointer", fontWeight: 700, marginLeft: "auto" }}>本{stat.douhan} 姫{stat.shimei}</button>
                             </div>
                           )}
                           {!isOff && (
@@ -928,7 +911,7 @@ export default function CabShift() {
                               <TimeSelect value={s.out || ""} onChange={(v) => updateShift(member.id, dateStr, { out: v })} style={{ width: "100%" }} />
                               {hours && <div style={{ textAlign: "center", fontSize: 9, color: "#D4789F" }}>{hours}h</div>}
                               <button onClick={() => openDetail(member.id, dateStr)} style={{ background: "rgba(255,199,60,0.15)", border: "1px solid rgba(255,199,60,0.3)", borderRadius: 5, padding: "2px 0", fontSize: 9, color: "#FFC93C", cursor: "pointer", fontWeight: 700 }}>
-                                本{stat.douhan} 姫{stat.shimei} 💰{stat.drink}
+                                本{stat.douhan} 姫{stat.shimei}
                               </button>
                             </div>
                           )}
@@ -1068,9 +1051,9 @@ export default function CabShift() {
                           <div style={{ fontSize: 16, color: "#D4789F" }}>{isExpanded ? "▲" : "▼"}</div>
                         </div>
                         <div style={{ display: "flex", gap: 8 }}>
-                          {[{ key: "douhan", label: "本指名", color: "#FF6B6B" }, { key: "shimei", label: "姫指名", color: "#FFC93C" }, { key: "drink", label: "雑費", color: "#5DC9E2" }].map(({ key, label, color }) => (
+                          {[{ key: "douhan", label: "本指名", color: "#FF6B6B" }, { key: "shimei", label: "姫指名", color: "#FFC93C" }, { key: "kekkin", label: "当日欠勤", color: "#FF7A7A" }].map(({ key, label, color }) => (
                             <div key={key} style={{ textAlign: "center", background: `${color}22`, borderRadius: 8, padding: "4px 10px" }}>
-                              <div style={{ fontSize: 16, fontWeight: 800, color }}>{key === "drink" ? formatYen(totalStat(member.id, key)) : totalStat(member.id, key)}</div>
+                              <div style={{ fontSize: 16, fontWeight: 800, color }}>{key === "kekkin" ? `${monthKekkinTotal(member.id)}回` : totalStat(member.id, key)}</div>
                               <div style={{ fontSize: 9, color: "#D4789F" }}>{label}</div>
                             </div>
                           ))}
@@ -1112,21 +1095,6 @@ export default function CabShift() {
                                 <button onClick={() => updateStat(member.id, editDateStr, { [key]: (editStat[key] || 0) + 1 })} style={{ width: 28, height: 28, border: "none", borderRadius: 8, background: color, color: "#fff", fontSize: 16, cursor: "pointer", fontWeight: 700 }}>＋</button>
                               </div>
                             ))}
-
-                            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                              <div style={{ fontSize: 16 }}>💰</div>
-                              <div style={{ flex: 1, fontWeight: 600, fontSize: 13 }}>雑費</div>
-                              <div style={{ display: "flex", alignItems: "center", gap: 4, background: "#fff", borderRadius: 8, padding: "6px 10px", border: "1.5px solid #BEE9F3" }}>
-                                <span style={{ fontSize: 13, fontWeight: 700, color: "#5DC9E2" }}>¥</span>
-                                <input
-                                  type="number"
-                                  placeholder="0"
-                                  value={editStat.drink || ""}
-                                  onChange={(e) => updateStat(member.id, editDateStr, { drink: e.target.value })}
-                                  style={{ width: 90, border: "none", background: "transparent", fontSize: 14, fontWeight: 700, color: "#5C3344", outline: "none" }}
-                                />
-                              </div>
-                            </div>
 
                             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                               <div style={{ fontSize: 16 }}>💴</div>
@@ -1498,7 +1466,7 @@ export default function CabShift() {
                     <div style={{ fontSize: 10, color: rankColor(member.rank) }}>{member.rank}</div>
                   </div>
                   {STAT_ITEMS.map(({ key, color }) => (
-                    <div key={key} style={{ textAlign: "center", fontWeight: 800, fontSize: 20, color }}>{key === "drink" ? formatYen(monthStatTotal(member.id, key)) : monthStatTotal(member.id, key)}</div>
+                    <div key={key} style={{ textAlign: "center", fontWeight: 800, fontSize: 20, color }}>{key === "kekkin" ? `${monthKekkinTotal(member.id)}回` : monthStatTotal(member.id, key)}</div>
                   ))}
                 </div>
               ))}
@@ -1506,7 +1474,7 @@ export default function CabShift() {
                 <div style={{ fontWeight: 700, fontSize: 12, color: "#D4789F" }}>合計</div>
                 {STAT_ITEMS.map(({ key, color }) => (
                   <div key={key} style={{ textAlign: "center", fontWeight: 800, fontSize: 20, color }}>
-                    {key === "drink" ? formatYen(cast.reduce((sum, m) => sum + monthStatTotal(m.id, key), 0)) : cast.reduce((sum, m) => sum + monthStatTotal(m.id, key), 0)}
+                    {key === "kekkin" ? `${cast.reduce((sum, m) => sum + monthKekkinTotal(m.id), 0)}回` : cast.reduce((sum, m) => sum + monthStatTotal(m.id, key), 0)}
                   </div>
                 ))}
               </div>
@@ -1562,7 +1530,7 @@ export default function CabShift() {
                       <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
                         <span style={{ fontSize: 11, color: "#FF6B6B" }}>本指名 {totalStat(member.id, "douhan")}</span>
                         <span style={{ fontSize: 11, color: "#FFC93C" }}>姫指名 {totalStat(member.id, "shimei")}</span>
-                        <span style={{ fontSize: 11, color: "#5DC9E2" }}>雑費 {formatYen(totalStat(member.id, "drink"))}</span>
+                        <span style={{ fontSize: 11, color: "#FF7A7A" }}>当日欠勤 {monthKekkinTotal(member.id)}回</span>
                       </div>
                     </div>
                     <button onClick={() => setEditingCast({ ...member })} style={{ background: "#FFF0F5", border: "none", borderRadius: 8, padding: "8px 14px", cursor: "pointer", color: "#FF6B9D", fontWeight: 600, fontSize: 13 }}>編集</button>
@@ -1731,20 +1699,6 @@ export default function CabShift() {
                   <button onClick={() => updateStat(castId, dateStr, { [key]: (stat[key] || 0) + 1 })} style={{ width: 32, height: 32, border: "none", borderRadius: 8, background: color, color: "#fff", fontSize: 18, cursor: "pointer", fontWeight: 700 }}>＋</button>
                 </div>
               ))}
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-                <div style={{ fontSize: 20 }}>💰</div>
-                <div style={{ flex: 1, fontWeight: 600 }}>雑費</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#F2FBFD", borderRadius: 10, padding: "8px 12px", border: "1.5px solid #BEE9F3", width: 130 }}>
-                  <span style={{ fontSize: 16, fontWeight: 700, color: "#5DC9E2" }}>¥</span>
-                  <input
-                    type="number"
-                    placeholder="0"
-                    value={stat.drink || ""}
-                    onChange={(e) => updateStat(castId, dateStr, { drink: e.target.value })}
-                    style={{ flex: 1, width: 60, border: "none", background: "transparent", fontSize: 16, fontWeight: 700, color: "#5C3344", outline: "none" }}
-                  />
-                </div>
-              </div>
               <div style={{ borderTop: "1px solid #FFF0F5", paddingTop: 14, marginTop: 4, marginBottom: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ fontSize: 20 }}>💴</div>
