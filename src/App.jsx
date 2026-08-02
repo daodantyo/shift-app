@@ -513,6 +513,12 @@ export default function CabShift() {
       else lines.push(`${d.date}(${d.weekday}) 休み`);
     });
     lines.push("");
+    lines.push("【シフトについてのお知らせ】");
+    lines.push("シフト確定後の当日欠勤があった場合は、お店の運営に大きな影響が出るため、今後のシフトにつきましては、お店の都合によりキャンセルまたは変更させていただく場合があります。");
+    lines.push("円滑な店舗運営のため、ご理解とご協力をお願いいたします。");
+    lines.push("");
+    lines.push("やむを得ない事情でお休みされる場合は、前日23:00までにご連絡ください。");
+    lines.push("");
     lines.push("よろしくお願いします🌸");
     return lines.join("\n");
   };
