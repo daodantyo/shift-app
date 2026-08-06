@@ -118,6 +118,12 @@ export default function CabShift() {
   const [stats, setStats] = useState({});
   const [expenses, setExpenses] = useState({});
   const [settings, setSettings] = useState({ showConfirmedShifts: true });
+  const [schedule, setSchedule] = useState({}); // 予定表 {dateStr: {id: {type, text}}}
+  const [scheduleMonth, setScheduleMonth] = useState(new Date().getMonth());
+  const [scheduleYear, setScheduleYear] = useState(new Date().getFullYear());
+  const [scheduleDayModal, setScheduleDayModal] = useState(null); // 予定を追加する日
+  const [newPlanType, setNewPlanType] = useState("shop");
+  const [newPlanText, setNewPlanText] = useState("");
   const [requests, setRequests] = useState({});
   const [newName, setNewName] = useState("");
   const [newRank, setNewRank] = useState("キャスト");
@@ -145,6 +151,7 @@ export default function CabShift() {
         if (data.stats) setStats(data.stats);
         if (data.expenses) setExpenses(data.expenses);
         if (data.settings) setSettings((s) => ({ ...s, ...data.settings }));
+        if (data.schedule) setSchedule(data.schedule);
       }
       setLoading(false);
     });
@@ -170,10 +177,34 @@ export default function CabShift() {
   }, []);
 
   const saveToFirebase = (newData) => {
-    set(ref(db, "shiftapp"), newData).then(() => {
+    // 予定表(schedule)は明示指定がなければ現在の値を保持する
+    const payload = { schedule, ...newData };
+    set(ref(db, "shiftapp"), payload).then(() => {
       setSaved(true);
       setTimeout(() => setSaved(false), 1500);
     });
+  };
+
+  const updateSchedule = (newSchedule) => { setSchedule(newSchedule); saveToFirebase({ cast, shifts, sales, stats, expenses, settings, schedule: newSchedule }); };
+  // 予定を追加
+  const addPlan = (dateStr, type, text) => {
+    if (!text.trim()) return;
+    const id = "p" + Date.now();
+    const newSchedule = { ...schedule, [dateStr]: { ...(schedule[dateStr] || {}), [id]: { type, text: text.trim() } } };
+    updateSchedule(newSchedule);
+  };
+  // 予定を削除
+  const removePlan = (dateStr, id) => {
+    const day = { ...(schedule[dateStr] || {}) };
+    delete day[id];
+    const newSchedule = { ...schedule, [dateStr]: day };
+    updateSchedule(newSchedule);
+  };
+  // 予定の種類の見た目
+  const PLAN_TYPES = {
+    shop: { label: "お店の予定", emoji: "🏪", color: "#FF6B9D", bg: "#FFF0F5" },
+    cast: { label: "キャストの予定", emoji: "👤", color: "#9B6DE0", bg: "#F3EDFC" },
+    memo: { label: "やること・メモ", emoji: "📝", color: "#E0A800", bg: "#FFF9E5" },
   };
 
   const updateCast = (newCast) => { setCast(newCast); saveToFirebase({ cast: newCast, shifts, sales, stats, expenses, settings }); };
@@ -724,7 +755,7 @@ export default function CabShift() {
           {saved && <div style={{ background: "#6BCB77", color: "#fff", borderRadius: 20, padding: "4px 14px", fontSize: 12, fontWeight: 700 }}>☁️ 保存済み</div>}
         </div>
         <div style={{ display: "flex", flexWrap: "wrap" }}>
-          {[{ id: "shift", label: "シフト" }, { id: "sales", label: "売上" }, { id: "expenses", label: "経費" }, { id: "summary", label: "集計" }, { id: "cast", label: "キャスト" }, { id: "requests", label: `希望シフト${pendingRequests.filter(([, r]) => r.status === "pending").length ? ` (${pendingRequests.filter(([, r]) => r.status === "pending").length})` : ""}` }].map((t) => (
+          {[{ id: "shift", label: "シフト" }, { id: "sales", label: "売上" }, { id: "expenses", label: "経費" }, { id: "summary", label: "集計" }, { id: "schedule", label: "予定表" }, { id: "cast", label: "キャスト" }, { id: "requests", label: `希望シフト${pendingRequests.filter(([, r]) => r.status === "pending").length ? ` (${pendingRequests.filter(([, r]) => r.status === "pending").length})` : ""}` }].map((t) => (
             <button key={t.id} onClick={() => setTab(t.id)} style={{ padding: "10px 20px", border: "none", cursor: "pointer", fontWeight: 600, fontSize: 14, borderRadius: "8px 8px 0 0", background: tab === t.id ? "#FFF5F8" : "transparent", color: tab === t.id ? "#5C3344" : "#D4789F" }}>{t.label}</button>
           ))}
         </div>
@@ -1567,6 +1598,57 @@ export default function CabShift() {
           </div>
         )}
 
+        {tab === "schedule" && (
+          <div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <button onClick={() => { if (scheduleMonth === 0) { setScheduleMonth(11); setScheduleYear(scheduleYear - 1); } else setScheduleMonth(scheduleMonth - 1); }} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "6px 14px", cursor: "pointer", color: "#FF6B9D", fontWeight: 700 }}>← 前月</button>
+              <div style={{ fontWeight: 800, fontSize: 17, color: "#5C3344" }}>{scheduleYear}年{scheduleMonth + 1}月</div>
+              <button onClick={() => { if (scheduleMonth === 11) { setScheduleMonth(0); setScheduleYear(scheduleYear + 1); } else setScheduleMonth(scheduleMonth + 1); }} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "6px 14px", cursor: "pointer", color: "#FF6B9D", fontWeight: 700 }}>次月 →</button>
+            </div>
+
+            <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+              {Object.entries(PLAN_TYPES).map(([k, v]) => (
+                <div key={k} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: v.color, fontWeight: 700 }}>
+                  <span>{v.emoji}</span>{v.label}
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+              {["月", "火", "水", "木", "金", "土", "日"].map((w) => (
+                <div key={w} style={{ textAlign: "center", fontSize: 11, fontWeight: 700, color: "#D4789F", padding: "4px 0" }}>{w}</div>
+              ))}
+              {(() => {
+                const firstDay = new Date(scheduleYear, scheduleMonth, 1);
+                const daysInMonth = new Date(scheduleYear, scheduleMonth + 1, 0).getDate();
+                const startBlank = (firstDay.getDay() + 6) % 7; // 月曜始まり
+                const cells = [];
+                for (let i = 0; i < startBlank; i++) cells.push(<div key={"b" + i}></div>);
+                for (let d = 1; d <= daysInMonth; d++) {
+                  const dateObj = new Date(scheduleYear, scheduleMonth, d);
+                  const dateStr = dateObj.toDateString();
+                  const plans = Object.entries(schedule[dateStr] || {});
+                  cells.push(
+                    <div key={d} onClick={() => setScheduleDayModal(dateStr)} style={{ background: "#fff", borderRadius: 8, padding: 4, minHeight: 62, cursor: "pointer", border: "1px solid #F3F3F3", overflow: "hidden" }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#5C3344", marginBottom: 2 }}>{d}</div>
+                      {plans.slice(0, 3).map(([id, p]) => {
+                        const t = PLAN_TYPES[p.type] || PLAN_TYPES.memo;
+                        return (
+                          <div key={id} style={{ background: t.bg, color: t.color, borderRadius: 4, padding: "1px 3px", fontSize: 9, marginBottom: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {t.emoji}{p.text}
+                          </div>
+                        );
+                      })}
+                      {plans.length > 3 && <div style={{ fontSize: 8, color: "#999" }}>+{plans.length - 3}件</div>}
+                    </div>
+                  );
+                }
+                return cells;
+              })()}
+            </div>
+          </div>
+        )}
+
         {tab === "cast" && (
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
@@ -1728,6 +1810,55 @@ export default function CabShift() {
           </div>
         )}
       </div>
+
+      {scheduleDayModal && (() => {
+        const dateStr = scheduleDayModal;
+        const d = new Date(dateStr);
+        const WD = ["日", "月", "火", "水", "木", "金", "土"];
+        const plans = Object.entries(schedule[dateStr] || {});
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }} onClick={() => { setScheduleDayModal(null); setNewPlanText(""); }}>
+            <div style={{ background: "#fff", borderRadius: 20, padding: 24, width: 360, maxWidth: "92vw", maxHeight: "85vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 14, color: "#5C3344" }}>📅 {d.getMonth() + 1}/{d.getDate()}({WD[d.getDay()]})の予定</div>
+
+              <div style={{ marginBottom: 16 }}>
+                {plans.length === 0 && <div style={{ fontSize: 13, color: "#999", padding: "8px 0" }}>まだ予定はありません</div>}
+                {plans.map(([id, p]) => {
+                  const t = PLAN_TYPES[p.type] || PLAN_TYPES.memo;
+                  return (
+                    <div key={id} style={{ display: "flex", alignItems: "center", gap: 8, background: t.bg, borderRadius: 8, padding: "8px 10px", marginBottom: 6 }}>
+                      <span style={{ fontSize: 14 }}>{t.emoji}</span>
+                      <span style={{ flex: 1, fontSize: 13, color: t.color, fontWeight: 600 }}>{p.text}</span>
+                      <button onClick={() => removePlan(dateStr, id)} style={{ background: "none", border: "none", color: "#FF6B6B", cursor: "pointer", fontSize: 16, fontWeight: 700 }}>×</button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div style={{ borderTop: "1px solid #F3F3F3", paddingTop: 14 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#5C3344", marginBottom: 8 }}>新しい予定を追加</div>
+                <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                  {Object.entries(PLAN_TYPES).map(([k, v]) => (
+                    <button key={k} onClick={() => setNewPlanType(k)} style={{ flex: 1, border: newPlanType === k ? "none" : `1px solid ${v.color}55`, borderRadius: 8, padding: "6px 2px", background: newPlanType === k ? v.color : "#fff", color: newPlanType === k ? "#fff" : v.color, fontWeight: 700, fontSize: 10, cursor: "pointer" }}>
+                      {v.emoji}<br />{v.label}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  placeholder="内容を入力(例: イベント、通院、備品発注)"
+                  value={newPlanText}
+                  onChange={(e) => setNewPlanText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { addPlan(dateStr, newPlanType, newPlanText); setNewPlanText(""); } }}
+                  style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #FFD9E8", borderRadius: 8, padding: "10px 12px", fontSize: 14, outline: "none", marginBottom: 10 }}
+                />
+                <button onClick={() => { addPlan(dateStr, newPlanType, newPlanText); setNewPlanText(""); }} style={{ width: "100%", background: "linear-gradient(135deg, #FFB6D5, #FF8FAB)", color: "#fff", border: "none", borderRadius: 10, padding: "11px 0", fontWeight: 800, fontSize: 14, cursor: "pointer", marginBottom: 8 }}>追加する</button>
+                <button onClick={() => { setScheduleDayModal(null); setNewPlanText(""); }} style={{ width: "100%", background: "#fff", color: "#888", border: "1px solid #ddd", borderRadius: 10, padding: "9px 0", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>閉じる</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {lineModal && (() => {
         const rows = lineModal.rows;
