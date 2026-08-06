@@ -622,7 +622,7 @@ export default function CabShift() {
   };
 
   const pendingRequests = Object.entries(requests || {})
-    .filter(([, r]) => r.status === "pending")
+    .filter(([, r]) => r.status === "pending" || r.status === "approved")
     .sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
 
   // LINEから開いた場合は希望シフト提出フォームだけを表示する
@@ -724,7 +724,7 @@ export default function CabShift() {
           {saved && <div style={{ background: "#6BCB77", color: "#fff", borderRadius: 20, padding: "4px 14px", fontSize: 12, fontWeight: 700 }}>☁️ 保存済み</div>}
         </div>
         <div style={{ display: "flex", flexWrap: "wrap" }}>
-          {[{ id: "shift", label: "シフト" }, { id: "sales", label: "売上" }, { id: "expenses", label: "経費" }, { id: "summary", label: "集計" }, { id: "cast", label: "キャスト" }, { id: "requests", label: `希望シフト${pendingRequests.length ? ` (${pendingRequests.length})` : ""}` }].map((t) => (
+          {[{ id: "shift", label: "シフト" }, { id: "sales", label: "売上" }, { id: "expenses", label: "経費" }, { id: "summary", label: "集計" }, { id: "cast", label: "キャスト" }, { id: "requests", label: `希望シフト${pendingRequests.filter(([, r]) => r.status === "pending").length ? ` (${pendingRequests.filter(([, r]) => r.status === "pending").length})` : ""}` }].map((t) => (
             <button key={t.id} onClick={() => setTab(t.id)} style={{ padding: "10px 20px", border: "none", cursor: "pointer", fontWeight: 600, fontSize: 14, borderRadius: "8px 8px 0 0", background: tab === t.id ? "#FFF5F8" : "transparent", color: tab === t.id ? "#5C3344" : "#D4789F" }}>{t.label}</button>
           ))}
         </div>
@@ -1677,10 +1677,15 @@ export default function CabShift() {
                 (a, b) => new Date(a[0]) - new Date(b[0])
               );
               return (
-                <div key={key} style={{ background: "#fff", borderRadius: 14, padding: 16, marginBottom: 12, border: "2px solid #FFD9E8" }}>
+                <div key={key} style={{ background: "#fff", borderRadius: 14, padding: 16, marginBottom: 12, border: req.status === "approved" ? "2px solid #B7E4C7" : "2px solid #FFD9E8" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 15 }}>{member?.name || "不明なキャスト"}</div>
+                      <div style={{ fontWeight: 700, fontSize: 15, display: "flex", alignItems: "center", gap: 8 }}>
+                        {member?.name || "不明なキャスト"}
+                        {req.status === "approved" && (
+                          <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", background: "#4CAF50", borderRadius: 6, padding: "2px 8px" }}>反映済み</span>
+                        )}
+                      </div>
                       <div style={{ fontSize: 11, color: "#D4789F" }}>
                         {req.lineName ? `LINE: ${req.lineName}` : ""}
                       </div>
@@ -1704,12 +1709,15 @@ export default function CabShift() {
                     })}
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => approveRequest(key, req)} style={{ flex: 1, background: "linear-gradient(135deg, #6BCB77, #4CAF50)", color: "#fff", border: "none", borderRadius: 8, padding: "10px 0", fontWeight: 700, cursor: "pointer" }}>
-                      承認してシフトに反映
-                    </button>
-                    <button onClick={() => rejectRequest(key)} style={{ background: "#FFF0F5", color: "#D4789F", border: "none", borderRadius: 8, padding: "10px 16px", fontWeight: 600, cursor: "pointer" }}>
-                      却下
-                    </button>
+                    {req.status === "approved" ? (
+                      <button onClick={() => approveRequest(key, req)} style={{ flex: 1, background: "#EAF7EC", color: "#4CAF50", border: "1.5px solid #B7E4C7", borderRadius: 8, padding: "10px 0", fontWeight: 700, cursor: "pointer" }}>
+                        ✓ 反映済み(もう一度反映する)
+                      </button>
+                    ) : (
+                      <button onClick={() => approveRequest(key, req)} style={{ flex: 1, background: "linear-gradient(135deg, #6BCB77, #4CAF50)", color: "#fff", border: "none", borderRadius: 8, padding: "10px 0", fontWeight: 700, cursor: "pointer" }}>
+                        承認してシフトに反映
+                      </button>
+                    )}
                     <button onClick={() => deleteRequest(key)} style={{ background: "#fff0f0", color: "#FF6B6B", border: "none", borderRadius: 8, padding: "10px 16px", fontWeight: 600, cursor: "pointer" }}>
                       削除
                     </button>
