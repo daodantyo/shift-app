@@ -787,6 +787,44 @@ export default function CabShift() {
         })()}
         {tab === "shift" && (
           <div>
+            {(() => {
+              // 今日から7日間で、予定がある日だけ集める
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const WD = ["日", "月", "火", "水", "木", "金", "土"];
+              const upcoming = [];
+              for (let i = 0; i < 7; i++) {
+                const d = new Date(today);
+                d.setDate(today.getDate() + i);
+                const ds = d.toDateString();
+                const plans = Object.entries(schedule[ds] || {});
+                if (plans.length > 0) upcoming.push({ d, ds, plans });
+              }
+              if (upcoming.length === 0) return null;
+              return (
+                <div style={{ background: "linear-gradient(135deg, #FFF8FB, #FFF0F5)", border: "2px solid #FFD9E8", borderRadius: 14, padding: 14, marginBottom: 16 }}>
+                  <div style={{ fontWeight: 800, fontSize: 14, color: "#FF6B9D", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>📅 これからの予定(7日間)</div>
+                  {upcoming.map(({ d, ds, plans }) => {
+                    const isToday = d.getTime() === today.getTime();
+                    return (
+                      <div key={ds} onClick={() => { setTab("schedule"); setScheduleDayModal(ds); setScheduleMonth(d.getMonth()); setScheduleYear(d.getFullYear()); }} style={{ display: "flex", gap: 10, padding: "6px 0", borderBottom: "1px solid #FFE4EF", cursor: "pointer", alignItems: "flex-start" }}>
+                        <div style={{ minWidth: 52, fontWeight: 700, fontSize: 12, color: isToday ? "#fff" : "#5C3344", background: isToday ? "#FF6B9D" : "transparent", borderRadius: 6, padding: isToday ? "2px 4px" : "2px 0", textAlign: "center" }}>
+                          {isToday ? "今日" : `${d.getMonth() + 1}/${d.getDate()}(${WD[d.getDay()]})`}
+                        </div>
+                        <div style={{ flex: 1, display: "flex", flexWrap: "wrap", gap: 4 }}>
+                          {plans.map(([id, p]) => {
+                            const t = PLAN_TYPES[p.type] || PLAN_TYPES.memo;
+                            return (
+                              <span key={id} style={{ background: t.bg, color: t.color, borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>{t.emoji}{p.text}</span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
             <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
               {[{ id: "week", label: "週間" }, { id: "month", label: "月間" }].map((v) => (
                 <button key={v.id} onClick={() => setShiftView(v.id)} style={{ flex: 1, padding: "10px 0", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 14, cursor: "pointer", background: shiftView === v.id ? "linear-gradient(135deg, #FFB6D5, #FF8FAB)" : "#fff", color: shiftView === v.id ? "#fff" : "#D4789F", boxShadow: shiftView === v.id ? "0 2px 8px rgba(255,107,157,0.3)" : "none" }}>
