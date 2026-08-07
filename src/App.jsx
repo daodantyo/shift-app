@@ -186,6 +186,75 @@ export default function CabShift() {
   };
 
   const updateSchedule = (newSchedule) => { setSchedule(newSchedule); saveToFirebase({ cast, shifts, sales, stats, expenses, settings, schedule: newSchedule }); };
+
+  // ===== バックアップ / 復元 =====
+  // 全データを1つのファイルにまとめて書き出す
+  const doBackup = (auto = false) => {
+    const backup = {
+      _backupVersion: 1,
+      _createdAt: new Date().toISOString(),
+      cast, shifts, sales, stats, expenses, settings, schedule,
+      shiftRequests: requests,
+      castLine,
+    };
+    const pad = (n) => String(n).padStart(2, "0");
+    const now = new Date();
+    const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const timeStamp = auto ? `${stamp}_自動` : `${stamp}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `shiftapp_backup_${timeStamp}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // バックアップファイルを読み込んで復元する
+  const doRestore = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      let data;
+      try { data = JSON.parse(e.target.result); }
+      catch { alert("このファイルは読み込めませんでした。バックアップファイルを選んでください。"); return; }
+      if (!data || !data.cast) { alert("バックアップの中身が正しくないようです。"); return; }
+      if (!window.confirm("今のデータを、このバックアップの内容で上書きします。よろしいですか?\n(この操作は元に戻せません)")) return;
+      // Firebaseの本体データを復元
+      const payload = {
+        cast: data.cast || [],
+        shifts: data.shifts || {},
+        sales: data.sales || {},
+        stats: data.stats || {},
+        expenses: data.expenses || {},
+        settings: data.settings || { showConfirmedShifts: true },
+        schedule: data.schedule || {},
+      };
+      set(ref(db, "shiftapp"), payload);
+      if (data.shiftRequests) set(ref(db, "shiftRequests"), data.shiftRequests);
+      if (data.castLine) set(ref(db, "castLine"), data.castLine);
+      alert("復元しました！画面を再読み込みします。");
+      setTimeout(() => window.location.reload(), 1200);
+    };
+    reader.readAsText(file);
+  };
+
+  // 1日1回、アプリを開いたときに自動でバックアップをダウンロード
+  useEffect(() => {
+    if (loading) return; // データ読み込み完了後だけ
+    const pad = (n) => String(n).padStart(2, "0");
+    const now = new Date();
+    const todayKey = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    let last = null;
+    try { last = localStorage.getItem("shiftapp_lastAutoBackup"); } catch {}
+    if (last !== todayKey && (cast && cast.length > 0)) {
+      // 今日まだ自動バックアップしていなければ実行
+      setTimeout(() => {
+        doBackup(true);
+        try { localStorage.setItem("shiftapp_lastAutoBackup", todayKey); } catch {}
+      }, 2000);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
   // 予定を追加
   const addPlan = (dateStr, type, text) => {
     if (!text.trim()) return;
@@ -1689,6 +1758,17 @@ export default function CabShift() {
 
         {tab === "cast" && (
           <div>
+            <div style={{ background: "#fff", borderRadius: 14, padding: 16, marginBottom: 16, border: "2px solid #B7E4C7" }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: "#4CAF50", marginBottom: 4 }}>💾 データのバックアップ</div>
+              <div style={{ fontSize: 11, color: "#888", marginBottom: 12 }}>大事なデータを、まるごとファイルに保存できます。アプリを開くと1日1回、自動でも保存されます。</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button onClick={() => doBackup(false)} style={{ flex: 1, minWidth: 130, background: "linear-gradient(135deg, #6BCB77, #4CAF50)", color: "#fff", border: "none", borderRadius: 10, padding: "11px 0", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>💾 今すぐバックアップ</button>
+                <label style={{ flex: 1, minWidth: 130, background: "#fff", color: "#4CAF50", border: "1.5px solid #B7E4C7", borderRadius: 10, padding: "11px 0", fontWeight: 700, fontSize: 13, cursor: "pointer", textAlign: "center" }}>
+                  📥 復元(読み込み)
+                  <input type="file" accept="application/json,.json" onChange={(e) => { if (e.target.files && e.target.files[0]) { doRestore(e.target.files[0]); e.target.value = ""; } }} style={{ display: "none" }} />
+                </label>
+              </div>
+            </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div style={{ fontWeight: 700, fontSize: 16 }}>キャスト一覧</div>
               <button onClick={() => setShowAddForm(!showAddForm)} style={{ background: "linear-gradient(135deg, #FF8FAB, #FF6B9D)", color: "#fff", border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>🌸 追加</button>
