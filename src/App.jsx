@@ -1322,8 +1322,9 @@ export default function CabShift() {
                   const isToday = d.toDateString() === new Date().toDateString();
                   const dayData = sales[dateStr] || {};
                   const working = cast.filter((c) => getShift(c.id, dateStr).status !== "off").length;
+                  const hasSales = dayAutoSales(dateStr) > 0;
                   return (
-                    <div key={i} style={{ background: "#fff", borderRadius: 14, padding: "14px 18px", marginBottom: 10, border: isToday ? "2px solid #FFC93C" : "2px solid transparent" }}>
+                    <div key={i} style={{ background: hasSales ? "linear-gradient(135deg, #FFE4EF, #FFD1E3)" : "#fff", borderRadius: 14, padding: "14px 18px", marginBottom: 10, border: isToday ? "2px solid #FFC93C" : hasSales ? "2px solid #FF8FAB" : "2px solid transparent" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                         <div style={{ minWidth: 48 }}>
                           <div style={{ fontSize: 11, fontWeight: 700, color: isWeekend ? "#FF4D8D" : "#D4789F" }}>{DAYS[i]}</div>
@@ -1393,8 +1394,9 @@ export default function CabShift() {
                   const dayData = sales[dateStr] || {};
                   const working = cast.filter((c) => getShift(c.id, dateStr).status !== "off").length;
                   const dayLabel = ["日","月","火","水","木","金","土"][d.getDay()];
+                  const hasSales = dayAutoSales(dateStr) > 0;
                   return (
-                    <div key={i} style={{ background: "#fff", borderRadius: 14, padding: "12px 16px", marginBottom: 8, border: isToday ? "2px solid #FFC93C" : "2px solid transparent" }}>
+                    <div key={i} style={{ background: hasSales ? "linear-gradient(135deg, #FFE4EF, #FFD1E3)" : "#fff", borderRadius: 14, padding: "12px 16px", marginBottom: 8, border: isToday ? "2px solid #FFC93C" : hasSales ? "2px solid #FF8FAB" : "2px solid transparent" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                         <div style={{ minWidth: 52 }}>
                           <div style={{ fontSize: 11, fontWeight: 700, color: isWeekend ? "#FF4D8D" : "#D4789F" }}>{dayLabel}</div>
