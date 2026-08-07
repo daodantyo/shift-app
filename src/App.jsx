@@ -253,7 +253,6 @@ export default function CabShift() {
         try { localStorage.setItem("shiftapp_lastAutoBackup", todayKey); } catch {}
       }, 2000);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading]);
   // 予定を追加
   const addPlan = (dateStr, type, text) => {
