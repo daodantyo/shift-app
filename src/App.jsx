@@ -1169,7 +1169,9 @@ export default function CabShift() {
                 </div>
 
                 {(() => {
-                  const selStr = daySumDateStr || dates[0].toDateString();
+                  const todayStr = new Date().toDateString();
+                  const todayInWeek = dates.some((d) => d.toDateString() === todayStr);
+                  const selStr = daySumDateStr || (todayInWeek ? todayStr : dates[0].toDateString());
                   const dayDrink = cast.reduce((sum, c) => sum + (Number(getStat(c.id, selStr).drink) || 0), 0);
                   const daySales = cast.reduce((sum, c) => sum + (Number(getStat(c.id, selStr).sales) || 0), 0);
                   const dayShop = dayAutoSales(selStr);
