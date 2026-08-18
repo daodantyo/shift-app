@@ -998,12 +998,14 @@ export default function CabShift() {
                     })}
                   </div>
                   {/* 選択した日の大きなカード */}
-                  <div style={{ background: "#fff", borderRadius: 16, border: isTodaySel ? "2px solid #FFC93C" : "2px solid #FFD9E8", boxShadow: "0 4px 16px rgba(255,107,157,0.15)", padding: "14px 12px", marginBottom: 16 }}>
-                    <div style={{ textAlign: "center", marginBottom: 12 }}>
-                      {isTodaySel && <span style={{ background: "linear-gradient(135deg, #FFC93C, #FFB03C)", color: "#fff", borderRadius: 20, padding: "3px 12px", fontSize: 12, fontWeight: 800, marginRight: 8, verticalAlign: "middle" }}>今日</span>}
-                      <span style={{ fontSize: 24, fontWeight: 800, color: "#5C3344", verticalAlign: "middle" }}>{formatDate(selDate)}</span>
-                      <span style={{ fontSize: 15, fontWeight: 700, color: selIdx >= 5 ? "#FF4D8D" : "#D4789F", marginLeft: 6, verticalAlign: "middle" }}>({DAYS[selIdx]})</span>
-                      <div style={{ fontSize: 13, color: "#D4789F", marginTop: 4, fontWeight: 700 }}>出勤 {workingCount}名</div>
+                  <div style={{ background: "#fff", borderRadius: 16, border: isTodaySel ? "3px solid #FFC93C" : "2px solid #FFD9E8", boxShadow: isTodaySel ? "0 4px 20px rgba(255,201,60,0.4)" : "0 4px 16px rgba(255,107,157,0.15)", padding: "14px 12px", marginBottom: 16 }}>
+                    <div style={{ textAlign: "center", marginBottom: 12, background: isTodaySel ? "linear-gradient(135deg, #FFF3D0, #FFE9A8)" : "transparent", borderRadius: 12, padding: isTodaySel ? "10px 0" : "0" }}>
+                      {isTodaySel && <div style={{ display: "inline-block", background: "linear-gradient(135deg, #FFC93C, #FFB03C)", color: "#fff", borderRadius: 20, padding: "4px 16px", fontSize: 13, fontWeight: 800, marginBottom: 6 }}>★ 本日のシフト ★</div>}
+                      <div>
+                        <span style={{ fontSize: 26, fontWeight: 800, color: isTodaySel ? "#E0930A" : "#5C3344", verticalAlign: "middle" }}>{formatDate(selDate)}</span>
+                        <span style={{ fontSize: 15, fontWeight: 700, color: selIdx >= 5 ? "#FF4D8D" : "#D4789F", marginLeft: 6, verticalAlign: "middle" }}>({DAYS[selIdx]})</span>
+                      </div>
+                      <div style={{ fontSize: 13, color: isTodaySel ? "#C97F0A" : "#D4789F", marginTop: 4, fontWeight: 700 }}>出勤 {workingCount}名</div>
                     </div>
                     {sorted.map((member) => {
                       const s = getShift(member.id, selStr);
@@ -1049,10 +1051,11 @@ export default function CabShift() {
                 const workingCast = cast.filter((c) => getShift(c.id, dateStr).status !== "off")
                   .sort((a, b) => (getShift(a.id, dateStr).in || "99:99").localeCompare(getShift(b.id, dateStr).in || "99:99"));
                 return (
-                  <div key={i} style={{ background: isToday ? "rgba(255,199,60,0.1)" : "#fff", borderRadius: 10, padding: "8px 6px", border: isToday ? "1.5px solid #FFC93C" : "1.5px solid #FFD9E8", minHeight: 80 }}>
+                  <div key={i} style={{ background: isToday ? "linear-gradient(135deg, #FFF3D0, #FFE9A8)" : "#fff", borderRadius: 10, padding: "8px 6px", border: isToday ? "2.5px solid #FFC93C" : "1.5px solid #FFD9E8", minHeight: 80, boxShadow: isToday ? "0 3px 10px rgba(255,201,60,0.4)" : "none" }}>
                     <div style={{ textAlign: "center", marginBottom: 6 }}>
+                      {isToday && <div style={{ background: "linear-gradient(135deg, #FFC93C, #FFB03C)", color: "#fff", borderRadius: 10, padding: "1px 0", fontSize: 9, fontWeight: 800, marginBottom: 2 }}>今日</div>}
                       <div style={{ fontSize: 10, fontWeight: 700, color: isWeekend ? "#FF4D8D" : "#D4789F" }}>{DAYS[i]}</div>
-                      <div style={{ fontSize: 12, fontWeight: 800, color: isToday ? "#FFC93C" : isWeekend ? "#FF4D8D" : "#5C3344" }}>{formatDate(d)}</div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: isToday ? "#E0930A" : isWeekend ? "#FF4D8D" : "#5C3344" }}>{formatDate(d)}</div>
                       <div style={{ fontSize: 10, color: "#D4789F" }}>{workingCast.length}名</div>
                     </div>
                     {workingCast.length === 0 ? <div style={{ textAlign: "center", fontSize: 9, color: "#FFB6D5" }}>なし</div>
