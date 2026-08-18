@@ -1980,16 +1980,47 @@ export default function CabShift() {
               </div>
               <div style={{ fontSize: 10, color: "#999", marginBottom: 14 }}>例: 1 = 100人に1人 / 10 = 10人に1人 / 0.0001 = 100万人に1人</div>
 
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#5C3344" }}>出勤1日ごとに上がる確率</div>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={settings.lotteryPerShift != null ? settings.lotteryPerShift : 0}
+                  onChange={(e) => updateSettings({ ...settings, lotteryPerShift: parseFloat(e.target.value) || 0 })}
+                  style={{ width: 80, border: "1.5px solid #FFD9E8", borderRadius: 8, padding: "8px 10px", fontSize: 14, fontWeight: 700, color: "#5C3344", outline: "none", textAlign: "right" }}
+                />
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#FF6B9D" }}>%</div>
+              </div>
+              <div style={{ fontSize: 10, color: "#999", marginBottom: 14 }}>例: 2 → 今週3日出勤なら当たる確率が +6%。0なら出勤数で変わりません</div>
+
+              <div style={{ marginBottom: 14, paddingTop: 12, borderTop: "1px solid #FFF0F5" }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#5C3344", marginBottom: 6 }}>🏠 今日の空き状況(抽選ページに表示されます)</div>
+                <textarea
+                  placeholder="例: 本日20時以降、空きあります／満室に近いです など"
+                  value={settings.lotteryVacancy || ""}
+                  onChange={(e) => updateSettings({ ...settings, lotteryVacancy: e.target.value })}
+                  rows={3}
+                  style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #FFD9E8", borderRadius: 8, padding: "10px 12px", fontSize: 14, color: "#5C3344", outline: "none", resize: "vertical", fontFamily: "inherit" }}
+                />
+              </div>
+
               {(() => {
-                const entries = Object.values(lotteryData || {});
+                // 抽選記録は lottery/<userId>/<日付> のネスト構造。全部平らにして集計
+                const entries = [];
+                Object.values(lotteryData || {}).forEach((byDate) => {
+                  if (byDate && typeof byDate === "object") {
+                    Object.values(byDate).forEach((rec) => { if (rec && rec.result) entries.push(rec); });
+                  }
+                });
                 const winners = entries.filter((e) => e.result === "win");
+                const winNames = [...new Set(winners.map((w) => w.castName))];
                 return (
                   <div style={{ background: "#FFF9E5", borderRadius: 10, padding: "10px 12px", marginBottom: 12 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#C97F0A", marginBottom: 4 }}>🎉 当選者({winners.length}人) / 参加 {entries.length}人</div>
-                    {winners.length === 0 ? (
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#C97F0A", marginBottom: 4 }}>🎉 当選(のべ{winners.length}回) / 参加のべ {entries.length}回</div>
+                    {winNames.length === 0 ? (
                       <div style={{ fontSize: 11, color: "#9A7B3A" }}>まだ当選者はいません</div>
                     ) : (
-                      <div style={{ fontSize: 12, color: "#5C3344" }}>{winners.map((w) => w.castName).join("、")}</div>
+                      <div style={{ fontSize: 12, color: "#5C3344" }}>{winNames.join("、")}</div>
                     )}
                   </div>
                 );
