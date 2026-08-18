@@ -1040,7 +1040,7 @@ export default function CabShift() {
                         <div key={member.id} style={{ borderRadius: 12, border: isOff ? "1.5px solid #f0f0f0" : `1.5px solid ${rankColor(member.rank)}55`, background: isOff ? "#fafafa" : "#FFF5F8", padding: "8px 10px", marginBottom: 8 }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                             <div style={{ minWidth: 0 }}>
-                              <div style={{ fontWeight: 800, fontSize: isOff ? 13 : 17, color: isOff ? "#bbb" : "#5C3344", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{member.name}{!isOff && s.aki && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 800, color: "#fff", background: "#2FB56A", borderRadius: 6, padding: "2px 8px", verticalAlign: "middle" }}>🟢空きあり</span>}</div>
+                              <div style={{ fontWeight: 800, fontSize: isOff ? 13 : 17, color: isOff ? "#bbb" : "#5C3344", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{member.name}</div>
                               <div style={{ fontSize: 10, fontWeight: 700, color: isOff ? "#ccc" : rankColor(member.rank) }}>{member.rank}</div>
                             </div>
                             <button onClick={() => updateShift(member.id, selStr, { status: isOff ? "work" : "off" })} style={{ border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer", background: isOff ? "#f0f0f0" : "linear-gradient(135deg, #FF8FAB, #FF6B9D)", color: isOff ? "#bbb" : "#fff", flexShrink: 0 }}>{isOff ? "休み" : "出勤"}</button>
@@ -1057,7 +1057,6 @@ export default function CabShift() {
                           {!isOff && (
                             <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
                               <button onClick={() => updateShift(member.id, selStr, { kekkin: !s.kekkin })} style={{ border: s.kekkin ? "none" : "1px solid #FFD0D0", borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 800, cursor: "pointer", background: s.kekkin ? "linear-gradient(135deg, #FF7A7A, #FF5252)" : "#fff", color: s.kekkin ? "#fff" : "#FF8A8A" }}>{s.kekkin ? "🚫 当日欠勤(取消)" : "🚫 当日欠勤"}</button>
-                              <button onClick={() => updateShift(member.id, selStr, { aki: !s.aki })} style={{ border: s.aki ? "none" : "1px solid #A5E0C0", borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 800, cursor: "pointer", background: s.aki ? "linear-gradient(135deg, #4CD98A, #2FB56A)" : "#fff", color: s.aki ? "#fff" : "#2FB56A" }}>{s.aki ? "🟢 空きあり(取消)" : "⚪ 空き"}</button>
                             </div>
                           )}
                         </div>
@@ -1144,6 +1143,9 @@ export default function CabShift() {
                               {hours && <div style={{ textAlign: "center", fontSize: 9, color: "#D4789F" }}>{hours}h</div>}
                               <button onClick={() => openDetail(member.id, dateStr)} style={{ background: "rgba(255,199,60,0.15)", border: "1px solid rgba(255,199,60,0.3)", borderRadius: 5, padding: "2px 0", fontSize: 9, color: "#FFC93C", cursor: "pointer", fontWeight: 700 }}>
                                 本{stat.douhan} 姫{stat.shimei}
+                              </button>
+                              <button onClick={() => updateShift(member.id, dateStr, { aki: !s.aki })} style={{ border: "none", borderRadius: 5, padding: "3px 0", fontSize: 9, fontWeight: 800, cursor: "pointer", background: s.aki ? "linear-gradient(135deg, #4CD98A, #2FB56A)" : "#EAF7EF", color: s.aki ? "#fff" : "#2FB56A" }}>
+                                {s.aki ? "🟢空きあり" : "⚪空き"}
                               </button>
                             </div>
                           )}
