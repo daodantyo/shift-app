@@ -1118,12 +1118,14 @@ export default function CabShift() {
                 const sa = getShift(a.id, refDate); const sb = getShift(b.id, refDate);
                 if (sa.status === "off" !== sb.status === "off") return sa.status === "off" ? 1 : -1;
                 return (sa.in || "99:99").localeCompare(sb.in || "99:99");
-              }).map((member, mi) => (
-                <div key={member.id} style={{ borderBottom: mi < cast.length - 1 ? "1px solid #FFF0F5" : "none" }}>
+              }).map((member, mi) => {
+                const isRoom = member.name.includes("部屋空き") || member.name.includes("部屋") && member.name.includes("空");
+                return (
+                <div key={member.id} style={{ borderBottom: mi < cast.length - 1 ? "1px solid #FFF0F5" : "none", background: isRoom ? "#EAF6FF" : "transparent" }}>
                   <div style={{ display: "grid", gridTemplateColumns: "100px repeat(7, 1fr)" }}>
                     <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                      <div style={{ fontWeight: 700, fontSize: 12, color: "#5C3344" }}>{member.name}</div>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: rankColor(member.rank) }}>{member.rank}</div>
+                      <div style={{ fontWeight: 700, fontSize: 12, color: isRoom ? "#2F80C4" : "#5C3344" }}>{isRoom ? "🏠 " : ""}{member.name}</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: isRoom ? "#5AA9E0" : rankColor(member.rank) }}>{isRoom ? "空き部屋" : member.rank}</div>
                     </div>
                     {dates.map((d, di) => {
                       const dateStr = d.toDateString();
@@ -1154,7 +1156,8 @@ export default function CabShift() {
                     })}
                   </div>
                 </div>
-              ))}
+                );
+              })}
 
               <div style={{ display: "grid", gridTemplateColumns: "100px repeat(7, 1fr)", background: "#FFF0F5", borderTop: "2px solid #FFD9E8" }}>
                 <div style={{ padding: "10px 10px", fontWeight: 700, fontSize: 11, color: "#D4789F", display: "flex", alignItems: "center" }}>出勤数</div>
