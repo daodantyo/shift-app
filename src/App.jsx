@@ -1085,12 +1085,15 @@ export default function CabShift() {
                       <div style={{ fontSize: 10, color: "#D4789F" }}>{workingCast.length}名</div>
                     </div>
                     {workingCast.length === 0 ? <div style={{ textAlign: "center", fontSize: 9, color: "#FFB6D5" }}>なし</div>
-                      : workingCast.map((c) => (
-                        <div key={c.id} style={{ background: `${rankColor(c.rank)}22`, borderRadius: 5, padding: "2px 4px", border: `1px solid ${rankColor(c.rank)}44`, marginBottom: 2 }}>
-                          <div style={{ fontSize: 10, fontWeight: 700, color: "#5C3344", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</div>
-                          {getShift(c.id, dateStr).in && <div style={{ fontSize: 9, color: "#D4789F", textAlign: "center" }}>{getShift(c.id, dateStr).in}</div>}
+                      : workingCast.map((c) => {
+                        const isRoom = c.name.includes("部屋空き") || (c.name.includes("部屋") && c.name.includes("空"));
+                        return (
+                        <div key={c.id} style={{ background: isRoom ? "#DDF0FF" : `${rankColor(c.rank)}22`, borderRadius: 5, padding: "2px 4px", border: isRoom ? "1px solid #8CC5EE" : `1px solid ${rankColor(c.rank)}44`, marginBottom: 2 }}>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: isRoom ? "#2F80C4" : "#5C3344", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{isRoom ? "🏠 " : ""}{c.name}</div>
+                          {getShift(c.id, dateStr).in && <div style={{ fontSize: 9, color: isRoom ? "#5AA9E0" : "#D4789F", textAlign: "center" }}>{getShift(c.id, dateStr).in}</div>}
                         </div>
-                      ))}
+                        );
+                      })}
                   </div>
                 );
               })}
