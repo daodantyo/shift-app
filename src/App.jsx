@@ -653,6 +653,13 @@ export default function CabShift() {
   const buildLineMessage = (castName, days) => {
     const lines = [];
     lines.push(`${castName}さん、来週のシフトが確定しました🌸`);
+    if (settings.lotteryEnabled) {
+      const base = typeof window !== "undefined" ? window.location.origin : "";
+      lines.push("");
+      lines.push("🎰 全額雑費無料抽選はこちら");
+      lines.push(`${base}/?lottery=1`);
+      lines.push("(当たると当日雑費が全額無料に！お一人様1回)");
+    }
     lines.push("");
     days.forEach((d) => {
       if (d.working) lines.push(`${d.date}(${d.weekday}) ${d.in}〜${d.out}`);
@@ -665,14 +672,6 @@ export default function CabShift() {
     lines.push("また、店舗の運営状況により、確定後のシフトについてもお店の都合で変更またはキャンセルをお願いする場合があります。");
     lines.push("やむを得ない事情でお休みされる場合は、できる限り前日の15:00までにご連絡をお願いいたします。");
     lines.push("皆さんが気持ちよく働ける環境と、円滑な店舗運営のため、ご理解・ご協力をよろしくお願いいたします🌸");
-    if (settings.lotteryEnabled) {
-      const base = typeof window !== "undefined" ? window.location.origin : "";
-      lines.push("");
-      lines.push("━━━━━━━━━━");
-      lines.push("🎰 全額雑費無料抽選はこちら");
-      lines.push(`${base}/?lottery=1`);
-      lines.push("(当たると当日雑費が全額無料に！お一人様1回)");
-    }
     return lines.join("\n");
   };
 
