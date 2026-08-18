@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { db } from "./firebase";
 import { ref, set, onValue, update, remove } from "firebase/database";
 import ShiftRequestForm from "./ShiftRequestForm";
+import LotteryPage from "./LotteryPage";
 
 const DAYS = ["月", "火", "水", "木", "金", "土", "日"];
 const INITIAL_CAST = [
@@ -88,6 +89,7 @@ export default function CabShift() {
   const isRequestPage = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("request") === "1";
   // スタッフ用のシフト閲覧専用ページは ?view=1 でアクセスした時だけ表示する(パスワード不要)
   const isViewPage = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("view") === "1";
+  const isLotteryPage = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("lottery") === "1";
 
   // ↓ 管理画面に入るためのパスワード。好きな文字列に変更してください
   const ADMIN_PASSWORD = "sakura2026";
@@ -135,6 +137,7 @@ export default function CabShift() {
   const [expandedStatCastId, setExpandedStatCastId] = useState(null);
   const [statEditDateStr, setStatEditDateStr] = useState(null);
   const [castLine, setCastLine] = useState({}); // 名前↔LINE対応表
+  const [lotteryData, setLotteryData] = useState({}); // 抽選の記録
   const [lineModal, setLineModal] = useState(null); // LINE送信モーダル
   const [lineSending, setLineSending] = useState(false);
   const [daySumDateStr, setDaySumDateStr] = useState(null); // その日の合計を見る日
@@ -172,6 +175,15 @@ export default function CabShift() {
     const clRef = ref(db, "castLine");
     const unsub = onValue(clRef, (snapshot) => {
       setCastLine(snapshot.val() || {});
+    });
+    return () => unsub();
+  }, []);
+
+  // 抽選の記録を読み込む
+  useEffect(() => {
+    const lRef = ref(db, "lottery");
+    const unsub = onValue(lRef, (snapshot) => {
+      setLotteryData(snapshot.val() || {});
     });
     return () => unsub();
   }, []);
@@ -653,6 +665,14 @@ export default function CabShift() {
     lines.push("また、店舗の運営状況により、確定後のシフトについてもお店の都合で変更またはキャンセルをお願いする場合があります。");
     lines.push("やむを得ない事情でお休みされる場合は、できる限り前日の15:00までにご連絡をお願いいたします。");
     lines.push("皆さんが気持ちよく働ける環境と、円滑な店舗運営のため、ご理解・ご協力をよろしくお願いいたします🌸");
+    if (settings.lotteryEnabled) {
+      const base = typeof window !== "undefined" ? window.location.origin : "";
+      lines.push("");
+      lines.push("━━━━━━━━━━");
+      lines.push("🎰 お楽しみ抽選はこちら");
+      lines.push(`${base}/?lottery=1`);
+      lines.push("(当たると当日雑費が全額無料に！お一人様1回)");
+    }
     return lines.join("\n");
   };
 
@@ -761,6 +781,10 @@ export default function CabShift() {
   // LINEから開いた場合は希望シフト提出フォームだけを表示する
   if (isRequestPage) {
     return <ShiftRequestForm />;
+  }
+
+  if (isLotteryPage) {
+    return <LotteryPage />;
   }
 
   // スタッフ向け:シフトを見るだけの画面(編集不可・パスワード不要)
@@ -1926,6 +1950,60 @@ export default function CabShift() {
                     boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
                   }}
                 />
+              </button>
+            </div>
+
+            <div style={{ background: "#fff", borderRadius: 14, padding: "16px 18px", marginBottom: 16, border: "2px solid #FFD9E8" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: "#FF6B9D" }}>🎰 お楽しみ抽選</div>
+                  <div style={{ fontSize: 11, color: "#D4789F", marginTop: 2 }}>シフトLINEに抽選リンクを付けます(当たると当日雑費無料)</div>
+                </div>
+                <button
+                  onClick={() => updateSettings({ ...settings, lotteryEnabled: !settings.lotteryEnabled })}
+                  style={{ width: 52, height: 30, borderRadius: 20, border: "none", cursor: "pointer", background: settings.lotteryEnabled ? "linear-gradient(135deg, #FF8FAB, #FF6B9D)" : "#e0e0e0", position: "relative", flexShrink: 0, marginLeft: 12 }}
+                >
+                  <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#fff", position: "absolute", top: 3, left: settings.lotteryEnabled ? 25 : 3, transition: "left 0.15s", boxShadow: "0 1px 3px rgba(0,0,0,0.3)" }} />
+                </button>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, paddingTop: 12, borderTop: "1px solid #FFF0F5" }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#5C3344" }}>当たる確率</div>
+                <input
+                  type="number"
+                  step="0.0001"
+                  value={settings.lotteryProb != null ? settings.lotteryProb : 0.0001}
+                  onChange={(e) => updateSettings({ ...settings, lotteryProb: parseFloat(e.target.value) || 0 })}
+                  style={{ width: 120, border: "1.5px solid #FFD9E8", borderRadius: 8, padding: "8px 10px", fontSize: 14, fontWeight: 700, color: "#5C3344", outline: "none", textAlign: "right" }}
+                />
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#FF6B9D" }}>%</div>
+              </div>
+              <div style={{ fontSize: 10, color: "#999", marginBottom: 14 }}>例: 1 = 100人に1人 / 10 = 10人に1人 / 0.0001 = 100万人に1人</div>
+
+              {(() => {
+                const entries = Object.values(lotteryData || {});
+                const winners = entries.filter((e) => e.result === "win");
+                return (
+                  <div style={{ background: "#FFF9E5", borderRadius: 10, padding: "10px 12px", marginBottom: 12 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#C97F0A", marginBottom: 4 }}>🎉 当選者({winners.length}人) / 参加 {entries.length}人</div>
+                    {winners.length === 0 ? (
+                      <div style={{ fontSize: 11, color: "#9A7B3A" }}>まだ当選者はいません</div>
+                    ) : (
+                      <div style={{ fontSize: 12, color: "#5C3344" }}>{winners.map((w) => w.castName).join("、")}</div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              <button
+                onClick={() => {
+                  if (window.confirm("全員の抽選記録をリセットします。もう一度みんなが引けるようになります。よろしいですか?")) {
+                    set(ref(db, "lottery"), null);
+                  }
+                }}
+                style={{ width: "100%", background: "#fff", color: "#FF6B6B", border: "1.5px solid #FFC0C0", borderRadius: 10, padding: "10px 0", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+              >
+                🔄 抽選をリセット(全員もう一度引ける)
               </button>
             </div>
 
