@@ -1279,7 +1279,9 @@ export default function CabShift() {
                               setExpandedStatCastId(null);
                             } else {
                               setExpandedStatCastId(member.id);
-                              setStatEditDateStr(dates[0].toDateString());
+                              const tStr = new Date().toDateString();
+                              const tIn = dates.some((d) => d.toDateString() === tStr);
+                              setStatEditDateStr(tIn ? tStr : dates[0].toDateString());
                             }
                           }}
                           style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, cursor: "pointer" }}
