@@ -238,9 +238,12 @@ export default function CabShift() {
     reader.readAsText(file);
   };
 
-  // 1日1回、アプリを開いたときに自動でバックアップをダウンロード
+  // 1日1回、パソコンでアプリを開いたときだけ自動バックアップ(スマホは除外)
   useEffect(() => {
     if (loading) return; // データ読み込み完了後だけ
+    // スマホ・タブレットでは自動バックアップしない(保存画面が邪魔になるため)
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || ("ontouchstart" in window && window.innerWidth < 1024);
+    if (isMobile) return;
     const pad = (n) => String(n).padStart(2, "0");
     const now = new Date();
     const todayKey = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
@@ -1762,7 +1765,7 @@ export default function CabShift() {
           <div>
             <div style={{ background: "#fff", borderRadius: 14, padding: 16, marginBottom: 16, border: "2px solid #B7E4C7" }}>
               <div style={{ fontWeight: 700, fontSize: 14, color: "#4CAF50", marginBottom: 4 }}>💾 データのバックアップ</div>
-              <div style={{ fontSize: 11, color: "#888", marginBottom: 12 }}>大事なデータを、まるごとファイルに保存できます。アプリを開くと1日1回、自動でも保存されます。</div>
+              <div style={{ fontSize: 11, color: "#888", marginBottom: 12 }}>大事なデータを、まるごとファイルに保存できます。パソコンで開くと1日1回、自動でも保存されます。</div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <button onClick={() => doBackup(false)} style={{ flex: 1, minWidth: 130, background: "linear-gradient(135deg, #6BCB77, #4CAF50)", color: "#fff", border: "none", borderRadius: 10, padding: "11px 0", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>💾 今すぐバックアップ</button>
                 <label style={{ flex: 1, minWidth: 130, background: "#fff", color: "#4CAF50", border: "1.5px solid #B7E4C7", borderRadius: 10, padding: "11px 0", fontWeight: 700, fontSize: 13, cursor: "pointer", textAlign: "center" }}>
