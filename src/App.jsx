@@ -876,10 +876,29 @@ export default function CabShift() {
                   <div style={{ fontWeight: 800, fontSize: 14, color: "#FF6B9D", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>📅 これからの予定(7日間)</div>
                   {upcoming.map(({ d, ds, plans }) => {
                     const isToday = d.getTime() === today.getTime();
+                    if (isToday) {
+                      // 今日の予定は大きく目立たせる
+                      return (
+                        <div key={ds} onClick={() => { setTab("schedule"); setScheduleDayModal(ds); setScheduleMonth(d.getMonth()); setScheduleYear(d.getFullYear()); }} style={{ background: "linear-gradient(135deg, #FF8FAB, #FF6B9D)", borderRadius: 12, padding: "14px 16px", marginBottom: 10, cursor: "pointer", boxShadow: "0 4px 12px rgba(255,107,157,0.35)" }}>
+                          <div style={{ color: "#fff", fontWeight: 800, fontSize: 17, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{ background: "#fff", color: "#FF6B9D", borderRadius: 8, padding: "3px 12px", fontSize: 15 }}>今日</span>
+                            {d.getMonth() + 1}/{d.getDate()}({WD[d.getDay()]})
+                          </div>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                            {plans.map(([id, p]) => {
+                              const t = PLAN_TYPES[p.type] || PLAN_TYPES.memo;
+                              return (
+                                <span key={id} style={{ background: "#fff", color: t.color, borderRadius: 8, padding: "6px 12px", fontSize: 14, fontWeight: 700 }}>{t.emoji}{p.text}</span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    }
                     return (
                       <div key={ds} onClick={() => { setTab("schedule"); setScheduleDayModal(ds); setScheduleMonth(d.getMonth()); setScheduleYear(d.getFullYear()); }} style={{ display: "flex", gap: 10, padding: "6px 0", borderBottom: "1px solid #FFE4EF", cursor: "pointer", alignItems: "flex-start" }}>
-                        <div style={{ minWidth: 52, fontWeight: 700, fontSize: 12, color: isToday ? "#fff" : "#5C3344", background: isToday ? "#FF6B9D" : "transparent", borderRadius: 6, padding: isToday ? "2px 4px" : "2px 0", textAlign: "center" }}>
-                          {isToday ? "今日" : `${d.getMonth() + 1}/${d.getDate()}(${WD[d.getDay()]})`}
+                        <div style={{ minWidth: 52, fontWeight: 700, fontSize: 12, color: "#5C3344", padding: "2px 0", textAlign: "center" }}>
+                          {`${d.getMonth() + 1}/${d.getDate()}(${WD[d.getDay()]})`}
                         </div>
                         <div style={{ flex: 1, display: "flex", flexWrap: "wrap", gap: 4 }}>
                           {plans.map(([id, p]) => {
