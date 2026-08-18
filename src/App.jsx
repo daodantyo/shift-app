@@ -122,35 +122,6 @@ export default function CabShift() {
   const [scheduleMonth, setScheduleMonth] = useState(new Date().getMonth());
   const [scheduleYear, setScheduleYear] = useState(new Date().getFullYear());
   const [scheduleDayModal, setScheduleDayModal] = useState(null); // 予定を追加する日
-  // アプリを開いたとき、今日の予定を管理者に1日1回だけ自動LINE送信
-  useEffect(() => {
-    if (loading) return;
-    const pad = (n) => String(n).padStart(2, "0");
-    const now = new Date();
-    const todayKey = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-    let last = null;
-    try { last = localStorage.getItem("shiftapp_lastPlanNotify"); } catch {}
-    if (last === todayKey) return; // 今日はもう送信済み
-    const todayStr = now.toDateString();
-    const plans = Object.entries(schedule[todayStr] || {});
-    if (plans.length === 0) return; // 今日の予定がなければ送らない
-    const WD = ["日", "月", "火", "水", "木", "金", "土"];
-    const TYPE_EMOJI = { shop: "🏪", cast: "👤", memo: "📝" };
-    const lines = [`📅 今日の予定 (${now.getMonth() + 1}/${now.getDate()} ${WD[now.getDay()]})`, ""];
-    plans.forEach(([, p]) => { lines.push(`${TYPE_EMOJI[p.type] || "📝"} ${p.text}`); });
-    const text = lines.join("\n");
-    setTimeout(() => {
-      fetch("/api/send-line", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ toAdmin: true, text }),
-      }).then((r) => r.json()).then((data) => {
-        if (data && data.ok) {
-          try { localStorage.setItem("shiftapp_lastPlanNotify", todayKey); } catch {}
-        }
-      }).catch(() => {});
-    }, 3000);
-  }, [loading, schedule]);
   const [newPlanType, setNewPlanType] = useState("shop");
   const [newPlanText, setNewPlanText] = useState("");
   const [requests, setRequests] = useState({});
@@ -286,6 +257,38 @@ export default function CabShift() {
       }, 2000);
     }
   }, [loading]);
+
+  // アプリを開いたとき、今日の予定を管理者に1日1回だけ自動LINE送信
+  useEffect(() => {
+    if (loading) return;
+    try {
+      const pad = (n) => String(n).padStart(2, "0");
+      const now = new Date();
+      const todayKey = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+      let last = null;
+      try { last = localStorage.getItem("shiftapp_lastPlanNotify"); } catch {}
+      if (last === todayKey) return; // 今日はもう送信済み
+      const todayStr = now.toDateString();
+      const plans = Object.entries((schedule && schedule[todayStr]) || {});
+      if (plans.length === 0) return; // 今日の予定がなければ送らない
+      const WD = ["日", "月", "火", "水", "木", "金", "土"];
+      const TYPE_EMOJI = { shop: "🏪", cast: "👤", memo: "📝" };
+      const lines = [`📅 今日の予定 (${now.getMonth() + 1}/${now.getDate()} ${WD[now.getDay()]})`, ""];
+      plans.forEach(([, p]) => { lines.push(`${TYPE_EMOJI[p.type] || "📝"} ${p.text}`); });
+      const text = lines.join("\n");
+      setTimeout(() => {
+        fetch("/api/send-line", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ toAdmin: true, text }),
+        }).then((r) => r.json()).then((data) => {
+          if (data && data.ok) {
+            try { localStorage.setItem("shiftapp_lastPlanNotify", todayKey); } catch {}
+          }
+        }).catch(() => {});
+      }, 3000);
+    } catch (e) { /* 自動送信の失敗はアプリ本体に影響させない */ }
+  }, [loading, schedule]);
   // 予定を追加
   const addPlan = (dateStr, type, text) => {
     if (!text.trim()) return;
