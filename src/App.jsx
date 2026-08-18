@@ -669,7 +669,7 @@ export default function CabShift() {
       const base = typeof window !== "undefined" ? window.location.origin : "";
       lines.push("");
       lines.push("━━━━━━━━━━");
-      lines.push("🎰 お楽しみ抽選はこちら");
+      lines.push("🎰 全額雑費無料抽選はこちら");
       lines.push(`${base}/?lottery=1`);
       lines.push("(当たると当日雑費が全額無料に！お一人様1回)");
     }
@@ -1956,7 +1956,7 @@ export default function CabShift() {
             <div style={{ background: "#fff", borderRadius: 14, padding: "16px 18px", marginBottom: 16, border: "2px solid #FFD9E8" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: "#FF6B9D" }}>🎰 お楽しみ抽選</div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: "#FF6B9D" }}>🎰 全額雑費無料抽選</div>
                   <div style={{ fontSize: 11, color: "#D4789F", marginTop: 2 }}>シフトLINEに抽選リンクを付けます(当たると当日雑費無料)</div>
                 </div>
                 <button
