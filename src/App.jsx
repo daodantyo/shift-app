@@ -1267,7 +1267,9 @@ export default function CabShift() {
                   <div style={{ fontSize: 11, color: "#D4789F", marginBottom: 12 }}>キャストをタップすると、その場で日ごとの数値を入力できます</div>
                   {[...cast].sort((a, b) => totalStat(b.id, "sales") - totalStat(a.id, "sales")).map((member) => {
                     const isExpanded = expandedStatCastId === member.id;
-                    const editDateStr = isExpanded ? (statEditDateStr || dates[0].toDateString()) : null;
+                    const todayStrStat = new Date().toDateString();
+                    const todayInWeekStat = dates.some((d) => d.toDateString() === todayStrStat);
+                    const editDateStr = isExpanded ? (statEditDateStr || (todayInWeekStat ? todayStrStat : dates[0].toDateString())) : null;
                     const editStat = isExpanded ? getStat(member.id, editDateStr) : null;
                     return (
                       <div key={member.id} style={{ background: "#FFF5F8", borderRadius: 10, padding: "10px 14px", marginBottom: 8 }}>
