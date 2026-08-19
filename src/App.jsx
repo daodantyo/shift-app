@@ -676,6 +676,21 @@ export default function CabShift() {
   };
 
   // LINE送信モーダルを開く:今見ている週のシフトを元に、送信対象リストを作る
+  const buildLotteryMessage = () => {
+    const lines = [];
+    lines.push("🎰 全額雑費無料抽選のお知らせ");
+    if (settings.lotteryVacancy && settings.lotteryVacancy.trim()) {
+      lines.push("");
+      lines.push(settings.lotteryVacancy);
+    }
+    const base = typeof window !== "undefined" ? window.location.origin : "";
+    lines.push("");
+    lines.push("抽選はこちら👇");
+    lines.push(`${base}/?lottery=1`);
+    lines.push("(当たると当日雑費が全額無料に！お一人様1回)");
+    return lines.join("\n");
+  };
+
   const openLineModal = (dateList) => {
     const WD = ["日", "月", "火", "水", "木", "金", "土"];
     const rows = cast.map((c) => {
@@ -700,7 +715,22 @@ export default function CabShift() {
         checked: !!(link && link.lineUserId), // 登録済みは初期チェックオン
       };
     });
-    setLineModal({ rows, dateList });
+    setLineModal({ rows, dateList, mode: "shift" });
+  };
+
+  const openLotteryModal = () => {
+    const rows = cast.map((c) => {
+      const link = castLine[String(c.id)];
+      return {
+        castId: String(c.id),
+        castName: c.name,
+        lineUserId: link && link.lineUserId ? link.lineUserId : null,
+        registered: !!(link && link.lineUserId),
+        days: [],
+        checked: !!(link && link.lineUserId),
+      };
+    });
+    setLineModal({ rows, dateList: [], mode: "lottery" });
   };
 
   // モーダルの中で個別のチェックを切り替える
@@ -725,7 +755,7 @@ export default function CabShift() {
     try {
       const messages = targets.map((r) => ({
         to: r.lineUserId,
-        text: buildLineMessage(r.castName, r.days),
+        text: lineModal.mode === "lottery" ? buildLotteryMessage() : buildLineMessage(r.castName, r.days),
       }));
       const res = await fetch("/api/send-line", {
         method: "POST",
@@ -2014,6 +2044,13 @@ export default function CabShift() {
                 />
               </div>
 
+              <button
+                onClick={openLotteryModal}
+                style={{ width: "100%", background: "linear-gradient(135deg, #06C755, #04A544)", border: "none", borderRadius: 10, padding: "12px 0", fontWeight: 800, fontSize: 14, cursor: "pointer", color: "#fff", boxShadow: "0 2px 8px rgba(6,199,85,0.3)", marginBottom: 14 }}
+              >
+                📩 抽選＆空き状況をLINE送信
+              </button>
+
               {(() => {
                 // 抽選記録は lottery/<userId>/<日付> のネスト構造。全部平らにして集計
                 const entries = [];
@@ -2168,8 +2205,8 @@ export default function CabShift() {
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }} onClick={() => !lineSending && setLineModal(null)}>
             <div style={{ background: "#fff", borderRadius: 20, padding: 24, width: 360, maxWidth: "92vw", maxHeight: "85vh", overflowY: "auto", border: "2px solid #06C755" }} onClick={(e) => e.stopPropagation()}>
-              <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 4, color: "#04A544" }}>📩 LINEで送信</div>
-              <div style={{ fontSize: 12, color: "#888", marginBottom: 14 }}>送る人にチェックを入れてください。この週のシフトが届きます。</div>
+              <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 4, color: "#04A544" }}>{lineModal.mode === "lottery" ? "🎰 抽選＆空き状況を送信" : "📩 LINEで送信"}</div>
+              <div style={{ fontSize: 12, color: "#888", marginBottom: 14 }}>{lineModal.mode === "lottery" ? "送る人にチェックを入れてください。抽選リンクと空き状況が届きます。" : "送る人にチェックを入れてください。この週のシフトが届きます。"}</div>
 
               <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
                 <button onClick={() => setLineModal((m) => ({ ...m, rows: m.rows.map((r) => r.registered ? { ...r, checked: true } : r) }))} style={{ flex: 1, fontSize: 12, padding: "6px 0", borderRadius: 8, border: "1px solid #06C755", background: "#fff", color: "#04A544", cursor: "pointer", fontWeight: 700 }}>全員チェック</button>
