@@ -92,7 +92,7 @@ export default function LotteryPage() {
   const finalProb = baseProb + myShiftDays * perShift;
 
   const doSpin = async () => {
-    if (spinning || alreadyToday || !profile || !profile.userId) return;
+    if (spinning || alreadyToday) return;
     setSpinning(true);
     setResult(null);
     const faces = ["🎰", "🎁", "💎", "🌸", "⭐", "🍀", "💰"];
@@ -108,10 +108,13 @@ export default function LotteryPage() {
     setSpinning(false);
     setAlreadyToday(true);
 
+    const uid = (profile && profile.userId) ? profile.userId : ("guest_" + Date.now());
+    const dname = (profile && profile.displayName) ? profile.displayName : "ゲスト";
+
     try {
-      await set(ref(db, "lottery/" + profile.userId + "/" + todayKey()), {
-        castName: profile.displayName || "",
-        lineUserId: profile.userId,
+      await set(ref(db, "lottery/" + uid + "/" + todayKey()), {
+        castName: dname,
+        lineUserId: (profile && profile.userId) ? profile.userId : "",
         result: res,
         prob: finalProb,
         playedAt: Date.now(),
@@ -125,7 +128,7 @@ export default function LotteryPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             toAdmin: true,
-            text: "🎉 抽選当選のお知らせ\n\n" + (profile.displayName || "キャスト") + "さんが「当日雑費全額無料」に当選しました！",
+            text: "🎉 抽選当選のお知らせ\n\n" + dname + "さんが「当日雑費全額無料」に当選しました！",
           }),
         });
       } catch (e) { /* noop */ }
@@ -150,7 +153,7 @@ export default function LotteryPage() {
       )}
 
       <div style={{ background: "#fff", borderRadius: 24, padding: "28px 24px", width: "100%", maxWidth: 380, textAlign: "center", boxShadow: "0 8px 30px rgba(255,107,157,0.25)" }}>
-        <div style={{ fontSize: 22, fontWeight: 800, color: "#FF6B9D", marginBottom: 4 }}>🎰 お楽しみ抽選</div>
+        <div style={{ fontSize: 22, fontWeight: 800, color: "#FF6B9D", marginBottom: 4 }}>🎰 全額雑費無料抽選</div>
         <div style={{ fontSize: 13, color: "#D4789F", marginBottom: 6 }}>
           {profile ? profile.displayName + "さん" : "ようこそ"}
         </div>
@@ -181,7 +184,7 @@ export default function LotteryPage() {
         {!alreadyToday && !result && (
           <button
             onClick={doSpin}
-            disabled={spinning || !profile}
+            disabled={spinning}
             style={{ width: "100%", background: spinning ? "#FFC0D8" : "linear-gradient(135deg, #FF8FAB, #FF6B9D)", color: "#fff", border: "none", borderRadius: 16, padding: "16px 0", fontWeight: 800, fontSize: 18, cursor: spinning ? "default" : "pointer", boxShadow: "0 4px 16px rgba(255,107,157,0.4)" }}
           >
             {spinning ? "抽選中..." : "🎰 抽選する"}
