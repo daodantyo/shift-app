@@ -2051,6 +2051,13 @@ export default function CabShift() {
                 📩 抽選＆空き状況をLINE送信
               </button>
 
+              <button
+                onClick={() => openLineModal(dates)}
+                style={{ width: "100%", background: "linear-gradient(135deg, #06C755, #04A544)", border: "none", borderRadius: 10, padding: "12px 0", fontWeight: 800, fontSize: 14, cursor: "pointer", color: "#fff", boxShadow: "0 2px 8px rgba(6,199,85,0.3)", marginBottom: 14 }}
+              >
+                📩 LINEで送信
+              </button>
+
               {(() => {
                 // 抽選記録は lottery/<userId>/<日付> のネスト構造。全部平らにして集計
                 const entries = [];
