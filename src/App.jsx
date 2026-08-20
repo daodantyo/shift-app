@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { db } from "./firebase";
-import { ref, set, onValue, update, remove } from "firebase/database";
+import { ref, set, onValue, update, remove, get } from "firebase/database";
 import ShiftRequestForm from "./ShiftRequestForm";
 import LotteryPage from "./LotteryPage";
 
@@ -691,11 +691,22 @@ export default function CabShift() {
     return lines.join("\n");
   };
 
-  const openLineModal = (dateList) => {
+  const openLineModal = async (dateList) => {
     const WD = ["日", "月", "火", "水", "木", "金", "土"];
+    // 送信直前に、保存済みの最新シフトをデータベースから読み直す。
+    // (時間を入力した直後でも、保存が間に合わずに「休み」で送られるのを防ぐ)
+    let latestShifts = shifts;
+    try {
+      const snap = await get(ref(db, "shiftapp/shifts"));
+      if (snap.exists()) latestShifts = snap.val() || {};
+    } catch (e) {
+      // 読み直しに失敗したら、画面上の今の値をそのまま使う
+    }
+    const getShiftLatest = (castId, dateStr) =>
+      (latestShifts[castId] || {})[dateStr] || { status: "off", in: "", out: "" };
     const rows = cast.map((c) => {
       const days = dateList.map((d) => {
-        const s = getShift(c.id, d.toDateString());
+        const s = getShiftLatest(c.id, d.toDateString());
         const working = s.status !== "off" && s.in && s.out;
         return {
           date: `${d.getMonth() + 1}/${d.getDate()}`,
