@@ -79,6 +79,7 @@ export default function ShiftRequestForm() {
   const [selectedCastId, setSelectedCastId] = useState("");
   const [entries, setEntries] = useState({});
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [requestView, setRequestView] = useState("week");
   const [monthOffset, setMonthOffset] = useState(1);
@@ -175,7 +176,9 @@ export default function ShiftRequestForm() {
       setError("お名前を選択してください");
       return;
     }
+    if (submitting) return; // 送信中の二重押し防止
     setError("");
+    setSubmitting(true);
     // お知らせLINE送信用:この子の名前とLINEの対応を1か所にまとめて保存(最新の1件だけ残す)
     if (profile?.userId) {
       set(ref(db, "castLine/" + selectedCastId), {
@@ -196,7 +199,16 @@ export default function ShiftRequestForm() {
       entries,
       createdAt: Date.now(),
       status: "pending",
-    }).then(() => setSubmitted(true));
+    })
+      .then(() => {
+        setSubmitting(false);
+        setSubmitted(true);
+      })
+      .catch(() => {
+        // 保存に失敗したら、はっきり知らせてもう一度押せるようにする
+        setSubmitting(false);
+        setError("送信できませんでした。電波の良い場所で、もう一度「送信する」を押してください。");
+      });
   };
 
   if (!ready) {
@@ -472,22 +484,29 @@ export default function ShiftRequestForm() {
         );
       })}
 
+      {error && (
+        <div style={{ color: "#FF6B6B", textAlign: "center", marginTop: 12, fontWeight: 700 }}>
+          {error}
+        </div>
+      )}
+
       <button
         onClick={submit}
+        disabled={submitting}
         style={{
           width: "100%",
           padding: 14,
           borderRadius: 10,
           border: "none",
-          background: "linear-gradient(135deg, #FF8FAB, #FF6B9D)",
+          background: submitting ? "#ccc" : "linear-gradient(135deg, #FF8FAB, #FF6B9D)",
           color: "#fff",
           fontWeight: 700,
           fontSize: 16,
           marginTop: 12,
-          cursor: "pointer",
+          cursor: submitting ? "default" : "pointer",
         }}
       >
-        送信する
+        {submitting ? "送信中…" : "送信する"}
       </button>
       </>)}
     </div>
