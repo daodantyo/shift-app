@@ -227,13 +227,16 @@ export default function ShiftRequestForm() {
           minHeight: "100vh",
           padding: 60,
           textAlign: "center",
-          fontWeight: 700,
-          fontSize: 18,
-          color: "#FF6B9D",
           ...DARK_LINE_BG,
         }}
       >
-        🌸 希望シフトを送信しました!
+        <div style={{ fontWeight: 700, fontSize: 18, color: "#FF6B9D", marginBottom: 16 }}>
+          🌸 希望シフトを送信しました!
+        </div>
+        <div style={{ fontWeight: 600, fontSize: 14, color: "#5C3344", lineHeight: 1.7, maxWidth: 340, margin: "0 auto" }}>
+          確認のご連絡が届きますので、少々お待ちください。<br />
+          3分たっても返信が来ない場合はお問い合わせください。
+        </div>
       </div>
     );
   }
