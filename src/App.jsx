@@ -283,6 +283,8 @@ export default function CabShift() {
       const todayStr = now.toDateString();
       const plans = Object.entries((schedule && schedule[todayStr]) || {});
       if (plans.length === 0) return; // 今日の予定がなければ送らない
+      // 送信する前に「今日は送った」と記録する(何度も送るのを防ぐ)
+      try { localStorage.setItem("shiftapp_lastPlanNotify", todayKey); } catch {}
       const WD = ["日", "月", "火", "水", "木", "金", "土"];
       const TYPE_EMOJI = { shop: "🏪", cast: "👤", memo: "📝" };
       const lines = [`📅 今日の予定 (${now.getMonth() + 1}/${now.getDate()} ${WD[now.getDay()]})`, ""];
@@ -293,14 +295,10 @@ export default function CabShift() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ toAdmin: true, text }),
-        }).then((r) => r.json()).then((data) => {
-          if (data && data.ok) {
-            try { localStorage.setItem("shiftapp_lastPlanNotify", todayKey); } catch {}
-          }
         }).catch(() => {});
       }, 3000);
     } catch (e) { /* 自動送信の失敗はアプリ本体に影響させない */ }
-  }, [loading, schedule]);
+  }, [loading]);
   // 予定を追加
   const addPlan = (dateStr, type, text) => {
     if (!text.trim()) return;
