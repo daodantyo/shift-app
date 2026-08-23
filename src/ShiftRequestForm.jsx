@@ -203,6 +203,8 @@ export default function ShiftRequestForm() {
       .then(() => {
         setSubmitting(false);
         setSubmitted(true);
+        // 完了メッセージが見えるように、画面をいちばん上に戻す
+        window.scrollTo(0, 0);
       })
       .catch(() => {
         // 保存に失敗したら、はっきり知らせてもう一度押せるようにする
