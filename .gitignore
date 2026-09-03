@@ -1,0 +1,14 @@
+# 依存パッケージ・ビルド成果物
+node_modules/
+build/
+
+# ローカル環境の設定(ポート番号など)
+.env.local
+.env.*.local
+
+# Claude Code のローカル起動設定
+.claude/
+
+# OS・エディタ
+.DS_Store
+Thumbs.db

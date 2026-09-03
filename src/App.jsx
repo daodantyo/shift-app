@@ -99,6 +99,9 @@ export default function CabShift() {
   );
   const [passwordInput, setPasswordInput] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  // ログイン済みの管理画面を開いているときだけ true
+  // (キャストの提出画面・抽選・閲覧ページ・ログイン前では false)
+  const isAdminScreen = unlocked && !isRequestPage && !isLotteryPage && !isViewPage;
 
   const handleUnlock = () => {
     if (passwordInput === ADMIN_PASSWORD) {
@@ -189,15 +192,15 @@ export default function CabShift() {
   }, []);
 
   const saveToFirebase = (newData) => {
-    // 予定表(schedule)は明示指定がなければ現在の値を保持する
-    const payload = { schedule, ...newData };
-    set(ref(db, "shiftapp"), payload).then(() => {
+    // 変わった項目だけを書き込む(全体を丸ごと上書きしない)。
+    // 2台以上で同時に使っていても、片方の変更がもう片方に消されにくくなる
+    update(ref(db, "shiftapp"), newData).then(() => {
       setSaved(true);
       setTimeout(() => setSaved(false), 1500);
     });
   };
 
-  const updateSchedule = (newSchedule) => { setSchedule(newSchedule); saveToFirebase({ cast, shifts, sales, stats, expenses, settings, schedule: newSchedule }); };
+  const updateSchedule = (newSchedule) => { setSchedule(newSchedule); saveToFirebase({ schedule: newSchedule }); };
 
   // ===== バックアップ / 復元 =====
   // 全データを1つのファイルにまとめて書き出す
@@ -253,6 +256,8 @@ export default function CabShift() {
   // 1日1回、パソコンでアプリを開いたときだけ自動バックアップ(スマホは除外)
   useEffect(() => {
     if (loading) return; // データ読み込み完了後だけ
+    // ログイン済みの管理画面だけで実行する(ログイン前や、キャストの提出画面・閲覧ページでは動かさない)
+    if (!isAdminScreen) return;
     // スマホ・タブレットでは自動バックアップしない(保存画面が邪魔になるため)
     const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || ("ontouchstart" in window && window.innerWidth < 1024);
     if (isMobile) return;
@@ -268,11 +273,14 @@ export default function CabShift() {
         try { localStorage.setItem("shiftapp_lastAutoBackup", todayKey); } catch {}
       }, 2000);
     }
-  }, [loading]);
+  }, [loading, isAdminScreen]);
 
   // アプリを開いたとき、今日の予定を管理者に1日1回だけ自動LINE送信
   useEffect(() => {
     if (loading) return;
+    // ログイン済みの管理画面だけで実行する
+    // (キャストがLINEから提出画面を開くたびに管理者へ届いてしまうのを防ぐ)
+    if (!isAdminScreen) return;
     try {
       const pad = (n) => String(n).padStart(2, "0");
       const now = new Date();
@@ -298,7 +306,7 @@ export default function CabShift() {
         }).catch(() => {});
       }, 3000);
     } catch (e) { /* 自動送信の失敗はアプリ本体に影響させない */ }
-  }, [loading]);
+  }, [loading, isAdminScreen]);
   // 予定を追加
   const addPlan = (dateStr, type, text) => {
     if (!text.trim()) return;
@@ -320,12 +328,12 @@ export default function CabShift() {
     memo: { label: "やること・メモ", emoji: "📝", color: "#E0A800", bg: "#FFF9E5" },
   };
 
-  const updateCast = (newCast) => { setCast(newCast); saveToFirebase({ cast: newCast, shifts, sales, stats, expenses, settings }); };
-  const updateShifts = (newShifts) => { setShifts(newShifts); saveToFirebase({ cast, shifts: newShifts, sales, stats, expenses, settings }); };
-  const updateSales = (newSales) => { setSales(newSales); saveToFirebase({ cast, shifts, sales: newSales, stats, expenses, settings }); };
-  const updateStats = (newStats) => { setStats(newStats); saveToFirebase({ cast, shifts, sales, stats: newStats, expenses, settings }); };
-  const updateExpenses = (newExpenses) => { setExpenses(newExpenses); saveToFirebase({ cast, shifts, sales, stats, expenses: newExpenses, settings }); };
-  const updateSettings = (newSettings) => { setSettings(newSettings); saveToFirebase({ cast, shifts, sales, stats, expenses, settings: newSettings }); };
+  const updateCast = (newCast) => { setCast(newCast); saveToFirebase({ cast: newCast }); };
+  const updateShifts = (newShifts) => { setShifts(newShifts); saveToFirebase({ shifts: newShifts }); };
+  const updateSales = (newSales) => { setSales(newSales); saveToFirebase({ sales: newSales }); };
+  const updateStats = (newStats) => { setStats(newStats); saveToFirebase({ stats: newStats }); };
+  const updateExpenses = (newExpenses) => { setExpenses(newExpenses); saveToFirebase({ expenses: newExpenses }); };
+  const updateSettings = (newSettings) => { setSettings(newSettings); saveToFirebase({ settings: newSettings }); };
 
   const getExpenseList = (dateStr) => {
     const obj = expenses[dateStr] || {};
@@ -403,7 +411,7 @@ export default function CabShift() {
     const newSettings = { ...settings, recurring: { ...(settings.recurring || {}), [r.id]: { ...((settings.recurring || {})[r.id] || {}), paid: newPaid } } };
     setExpenses(newExpenses);
     setSettings(newSettings);
-    saveToFirebase({ cast, shifts, sales, stats, expenses: newExpenses, settings: newSettings });
+    saveToFirebase({ expenses: newExpenses, settings: newSettings });
   };
   // お知らせバナーの「経費に追加」ボタン(チェックONと同じ動き)
   const payToExpense = (r) => { togglePaid(r); };
@@ -807,7 +815,7 @@ export default function CabShift() {
       };
     });
     setShifts(newShifts);
-    saveToFirebase({ cast, shifts: newShifts, sales, stats, expenses, settings });
+    saveToFirebase({ shifts: newShifts });
     update(ref(db, `shiftRequests/${key}`), { status: "approved" });
   };
 
@@ -2134,7 +2142,14 @@ export default function CabShift() {
                       </div>
                     </div>
                     <div style={{ fontSize: 11, color: "#D4789F" }}>
-                      {req.weekStart}週
+                      {(() => {
+                        // いつの希望か(週なら「9/7〜の週」、月なら「2026年9月分」)
+                        const ws = req.weekStart ? new Date(req.weekStart) : null;
+                        if (!ws || isNaN(ws.getTime())) return "";
+                        return req.periodType === "month"
+                          ? `${ws.getFullYear()}年${ws.getMonth() + 1}月分`
+                          : `${ws.getMonth() + 1}/${ws.getDate()}〜の週`;
+                      })()}
                     </div>
                   </div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>

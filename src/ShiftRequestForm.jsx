@@ -177,6 +177,17 @@ export default function ShiftRequestForm() {
       return;
     }
     if (submitting) return; // 送信中の二重押し防止
+    // 出勤希望なのに時間が入っていない日があれば、送信前に知らせる
+    // (時間なしで送るとお店側で「?〜?」になり、確定シフトにも反映できないため)
+    const missing = dates.filter((d) => {
+      const e = entries[d.toDateString()];
+      return e && e.status === "work" && (!e.in || !e.out);
+    });
+    if (missing.length > 0) {
+      const list = missing.map((d) => `${d.getMonth() + 1}/${d.getDate()}`).join("、");
+      setError(`出勤希望の日は開始と終了の時間を入れてください(${list})`);
+      return;
+    }
     setError("");
     setSubmitting(true);
     // お知らせLINE送信用:この子の名前とLINEの対応を1か所にまとめて保存(最新の1件だけ残す)
