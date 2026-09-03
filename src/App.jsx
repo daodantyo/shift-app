@@ -648,9 +648,10 @@ export default function CabShift() {
   };
 
   // 1人ぶんのLINE文面を組み立てる
-  const buildLineMessage = (castName, days) => {
+  // periodLabel は「来週」「9月」など、いつのシフトかを表す言葉
+  const buildLineMessage = (castName, days, periodLabel = "来週") => {
     const lines = [];
-    lines.push(`${castName}さん、来週のシフトが確定しました🌸`);
+    lines.push(`${castName}さん、${periodLabel}のシフトが確定しました🌸`);
     if (settings.lotteryEnabled) {
       const base = typeof window !== "undefined" ? window.location.origin : "";
       lines.push("");
@@ -663,6 +664,12 @@ export default function CabShift() {
       if (d.working) lines.push(`${d.date}(${d.weekday}) ${d.in}〜${d.out}`);
       else lines.push(`${d.date}(${d.weekday}) 休み`);
     });
+    // 1か月ぶんなど日数が多いときは、出勤日数のまとめも入れる
+    if (days.length > 14) {
+      const workDays = days.filter((d) => d.working).length;
+      lines.push("");
+      lines.push(`出勤 ${workDays}日 / 全${days.length}日`);
+    }
     lines.push("");
     lines.push("【シフトについてのお知らせ🌸】");
     lines.push("シフト確定後の当日欠勤・急な変更がありますと、お店の運営や他のスタッフのシフトに大きな影響が出てしまいます。");
@@ -689,7 +696,7 @@ export default function CabShift() {
     return lines.join("\n");
   };
 
-  const openLineModal = async (dateList) => {
+  const openLineModal = async (dateList, periodLabel = "来週") => {
     const WD = ["日", "月", "火", "水", "木", "金", "土"];
     // 送信直前に、保存済みの最新シフトをデータベースから読み直す。
     // (時間を入力した直後でも、保存が間に合わずに「休み」で送られるのを防ぐ)
@@ -724,7 +731,7 @@ export default function CabShift() {
         checked: !!(link && link.lineUserId), // 登録済みは初期チェックオン
       };
     });
-    setLineModal({ rows, dateList, mode: "shift" });
+    setLineModal({ rows, dateList, mode: "shift", periodLabel });
   };
 
   const openLotteryModal = () => {
@@ -764,7 +771,7 @@ export default function CabShift() {
     try {
       const messages = targets.map((r) => ({
         to: r.lineUserId,
-        text: lineModal.mode === "lottery" ? buildLotteryMessage() : buildLineMessage(r.castName, r.days),
+        text: lineModal.mode === "lottery" ? buildLotteryMessage() : buildLineMessage(r.castName, r.days, lineModal.periodLabel || "来週"),
       }));
       const res = await fetch("/api/send-line", {
         method: "POST",
@@ -1225,8 +1232,9 @@ export default function CabShift() {
                   <div style={{ fontWeight: 700, fontSize: 15 }}>{summaryYear}年{summaryMonth + 1}月</div>
                   <button onClick={nextMonth} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}>次月 →</button>
                 </div>
-                <div style={{ textAlign: "right", marginBottom: 12 }}>
+                <div style={{ textAlign: "right", marginBottom: 12, display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
                   <button onClick={() => exportShiftCSV(monthDates, `${summaryYear}-${String(summaryMonth + 1).padStart(2, "0")}`)} style={{ background: "linear-gradient(135deg, #7ED9A7, #4CBF87)", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", boxShadow: "0 2px 8px rgba(76,191,135,0.3)" }}>📥 この月をCSV書き出し</button>
+                  <button onClick={() => openLineModal(monthDates, `${summaryMonth + 1}月`)} style={{ background: "linear-gradient(135deg, #06C755, #04A544)", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", boxShadow: "0 2px 8px rgba(6,199,85,0.3)" }}>📩 この月をLINEで送信</button>
                 </div>
                 {monthDates.map((d, i) => {
                   const dateStr = d.toDateString();
@@ -2222,7 +2230,7 @@ export default function CabShift() {
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }} onClick={() => !lineSending && setLineModal(null)}>
             <div style={{ background: "#fff", borderRadius: 20, padding: 24, width: 360, maxWidth: "92vw", maxHeight: "85vh", overflowY: "auto", border: "2px solid #06C755" }} onClick={(e) => e.stopPropagation()}>
               <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 4, color: "#04A544" }}>{lineModal.mode === "lottery" ? "🎰 抽選＆空き状況を送信" : "📩 LINEで送信"}</div>
-              <div style={{ fontSize: 12, color: "#888", marginBottom: 14 }}>{lineModal.mode === "lottery" ? "送る人にチェックを入れてください。抽選リンクと空き状況が届きます。" : "送る人にチェックを入れてください。この週のシフトが届きます。"}</div>
+              <div style={{ fontSize: 12, color: "#888", marginBottom: 14 }}>{lineModal.mode === "lottery" ? "送る人にチェックを入れてください。抽選リンクと空き状況が届きます。" : `送る人にチェックを入れてください。${lineModal.periodLabel || "来週"}のシフト(${lineModal.dateList.length}日ぶん)が届きます。`}</div>
 
               <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
                 <button onClick={() => setLineModal((m) => ({ ...m, rows: m.rows.map((r) => r.registered ? { ...r, checked: true } : r) }))} style={{ flex: 1, fontSize: 12, padding: "6px 0", borderRadius: 8, border: "1px solid #06C755", background: "#fff", color: "#04A544", cursor: "pointer", fontWeight: 700 }}>全員チェック</button>
