@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { db, auth } from "./firebase";
 import { ref, set, onValue, update, remove, get } from "firebase/database";
 import { onAuthStateChanged, signOut } from "firebase/auth";
@@ -40,6 +40,42 @@ function getWeekDates(offset = 0) {
     d.setDate(monday.getDate() + i);
     return d;
   });
+}
+
+// シフト1コマぶんのメモ欄
+// 1文字ごとに保存すると通信が多すぎるので、入力が止まって0.8秒後・欄から出たとき・Enterで保存する
+function MemoInput({ value, onSave, placeholder, style }) {
+  const [text, setText] = useState(value || "");
+  const [dirty, setDirty] = useState(false); // 入力中(まだ保存していない)かどうか
+  const onSaveRef = useRef(onSave);
+  onSaveRef.current = onSave;
+  // 他の端末で変わったら追従する(自分が入力中のときは上書きしない)
+  useEffect(() => { if (!dirty) setText(value || ""); }, [value, dirty]);
+  // 入力が止まったら自動保存
+  useEffect(() => {
+    if (!dirty) return;
+    const t = setTimeout(() => {
+      setDirty(false);
+      if ((text || "") !== (value || "")) onSaveRef.current(text.trim());
+    }, 800);
+    return () => clearTimeout(t);
+  }, [text, dirty, value]);
+  const commit = () => {
+    if (!dirty) return;
+    setDirty(false);
+    if ((text || "") !== (value || "")) onSaveRef.current(text.trim());
+  };
+  return (
+    <input
+      value={text}
+      onChange={(e) => { setText(e.target.value); setDirty(true); }}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === "Enter") commit(); }}
+      placeholder={placeholder || "メモ"}
+      title={text}
+      style={{ width: "100%", boxSizing: "border-box", border: "1px solid #FFD9E8", borderRadius: 5, padding: "3px 5px", fontSize: 9, color: "#5C3344", outline: "none", background: text ? "#FFFBEA" : "#fff", ...style }}
+    />
+  );
 }
 
 function TimeSelect({ value, onChange, style }) {
@@ -1122,6 +1158,11 @@ function CabShift({ user, shopId }) {
                               <button onClick={() => updateShift(member.id, selStr, { kekkin: !s.kekkin })} style={{ border: s.kekkin ? "none" : "1px solid #FFD0D0", borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 800, cursor: "pointer", background: s.kekkin ? "linear-gradient(135deg, #FF7A7A, #FF5252)" : "#fff", color: s.kekkin ? "#fff" : "#FF8A8A" }}>{s.kekkin ? "🚫 当日欠勤(取消)" : "🚫 当日欠勤"}</button>
                             </div>
                           )}
+                          {!isOff && (
+                            <div style={{ marginTop: 6 }}>
+                              <MemoInput value={s.memo || ""} onSave={(v) => updateShift(member.id, selStr, { memo: v })} placeholder="📝 メモ" style={{ fontSize: 12, padding: "6px 8px", borderRadius: 8 }} />
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -1154,6 +1195,7 @@ function CabShift({ user, shopId }) {
                         <div key={c.id} style={{ background: isRoom ? "#DDF0FF" : `${rankColor(c.rank)}22`, borderRadius: 5, padding: "2px 4px", border: isRoom ? "1px solid #8CC5EE" : `1px solid ${rankColor(c.rank)}44`, marginBottom: 2 }}>
                           <div style={{ fontSize: 10, fontWeight: 700, color: isRoom ? "#2F80C4" : "#5C3344", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{isRoom ? "🏠 " : ""}{c.name}</div>
                           {getShift(c.id, dateStr).in && <div style={{ fontSize: 9, color: isRoom ? "#5AA9E0" : "#D4789F", textAlign: "center" }}>{getShift(c.id, dateStr).in}</div>}
+                          {getShift(c.id, dateStr).memo && <div style={{ fontSize: 8, color: "#B8860B", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={getShift(c.id, dateStr).memo}>📝{getShift(c.id, dateStr).memo}</div>}
                         </div>
                         );
                       })}
@@ -1215,6 +1257,7 @@ function CabShift({ user, shopId }) {
                               <button onClick={() => updateShift(member.id, dateStr, { aki: !s.aki })} style={{ border: "none", borderRadius: 5, padding: "3px 0", fontSize: 9, fontWeight: 800, cursor: "pointer", background: s.aki ? "linear-gradient(135deg, #4CD98A, #2FB56A)" : "#EAF7EF", color: s.aki ? "#fff" : "#2FB56A" }}>
                                 {s.aki ? "🟢空きあり" : "⚪空き"}
                               </button>
+                              <MemoInput value={s.memo || ""} onSave={(v) => updateShift(member.id, dateStr, { memo: v })} />
                             </div>
                           )}
                         </div>
