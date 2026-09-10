@@ -17,9 +17,6 @@ const DARK_LINE_BG = {
   backgroundAttachment: "fixed",
 };
 
-// ↓ LINE Developersコンソールで発行したLIFF IDに置き換えてください
-const LIFF_ID = "2010692487-HEfxObPq";
-
 function TimeSelect({ value, onChange }) {
   const [h, m] = (value || "").split(":");
   const hour = h || "";
@@ -72,8 +69,11 @@ function getMonthDates(monthOffset = 1) {
   return Array.from({ length: daysInMonth }, (_, i) => new Date(year, month, i + 1));
 }
 
-export default function ShiftRequestForm() {
+// 希望シフト提出  URL: /?request=1&shop=お店ID
+export default function ShiftRequestForm({ shopId }) {
+  const shopBase = `shops/${shopId}`;
   const [ready, setReady] = useState(false);
+  const [liffId, setLiffId] = useState(null); // null = お店の設定をまだ読んでいない
   const [profile, setProfile] = useState(null);
   const [castList, setCastList] = useState([]);
   const [selectedCastId, setSelectedCastId] = useState("");
@@ -115,9 +115,12 @@ export default function ShiftRequestForm() {
     setEntries({});
   };
 
+  // お店の設定(LIFF ID)がわかってから LINE にログインする
   useEffect(() => {
+    if (liffId === null) return;
+    if (!liffId) { setReady(true); return; }
     liff
-      .init({ liffId: LIFF_ID })
+      .init({ liffId })
       .then(() => {
         if (!liff.isLoggedIn()) {
           liff.login();
@@ -130,36 +133,37 @@ export default function ShiftRequestForm() {
         setReady(true);
       })
       .catch((e) => setError("LINEの初期化に失敗しました: " + e.message));
-  }, []);
+  }, [liffId]);
 
   useEffect(() => {
-    const castRef = ref(db, "shiftapp/cast");
+    const castRef = ref(db, `${shopBase}/data/cast`);
     const unsub = onValue(castRef, (snap) => {
       const data = snap.val();
-      if (data) setCastList(data);
+      if (data) setCastList(Array.isArray(data) ? data.filter(Boolean) : Object.values(data));
     });
     return () => unsub();
-  }, []);
+  }, [shopBase]);
 
   const [confirmedShifts, setConfirmedShifts] = useState({});
 
   useEffect(() => {
-    const shiftsRef = ref(db, "shiftapp/shifts");
+    const shiftsRef = ref(db, `${shopBase}/data/shifts`);
     const unsub = onValue(shiftsRef, (snap) => {
       setConfirmedShifts(snap.val() || {});
     });
     return () => unsub();
-  }, []);
+  }, [shopBase]);
 
   useEffect(() => {
-    const settingsRef = ref(db, "shiftapp/settings");
+    const settingsRef = ref(db, `${shopBase}/data/settings`);
     const unsub = onValue(settingsRef, (snap) => {
       const data = snap.val();
       // 未設定の場合は表示する(true)がデフォルト
       setShowConfirmedShifts(data && data.showConfirmedShifts === false ? false : true);
+      setLiffId((data && data.liffId) || "");
     });
     return () => unsub();
-  }, []);
+  }, [shopBase]);
 
   const getConfirmedShift = (castId, dateStr) =>
     (confirmedShifts[castId] || {})[dateStr] || { status: "off", in: "", out: "" };
@@ -192,7 +196,7 @@ export default function ShiftRequestForm() {
     setSubmitting(true);
     // お知らせLINE送信用:この子の名前とLINEの対応を1か所にまとめて保存(最新の1件だけ残す)
     if (profile?.userId) {
-      set(ref(db, "castLine/" + selectedCastId), {
+      set(ref(db, `${shopBase}/castLine/${selectedCastId}`), {
         castId: selectedCastId,
         castName: (selectedCast && selectedCast.name) || "",
         lineUserId: profile.userId,
@@ -200,7 +204,7 @@ export default function ShiftRequestForm() {
         updatedAt: Date.now(),
       }).catch(() => {});
     }
-    const requestsRef = ref(db, "shiftRequests");
+    const requestsRef = ref(db, `${shopBase}/shiftRequests`);
     push(requestsRef, {
       castId: selectedCastId,
       lineUserId: profile?.userId || null,
@@ -228,6 +232,17 @@ export default function ShiftRequestForm() {
     return (
       <div style={{ minHeight: "100vh", padding: 60, textAlign: "center", color: "#D4789F", ...DARK_LINE_BG }}>
         読み込み中...
+      </div>
+    );
+  }
+
+  // お店側でLIFF IDが未設定なら、提出はできない
+  if (!liffId) {
+    return (
+      <div style={{ minHeight: "100vh", padding: 40, display: "flex", alignItems: "center", justifyContent: "center", ...DARK_LINE_BG }}>
+        <div style={{ background: "#fff", borderRadius: 16, padding: 24, maxWidth: 360, textAlign: "center", color: "#5C3344", fontWeight: 700, lineHeight: 1.7 }}>
+          このお店のLINE設定(LIFF ID)がまだ登録されていません。<br />お店の管理者にご連絡ください。
+        </div>
       </div>
     );
   }

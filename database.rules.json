@@ -1,0 +1,31 @@
+{
+  "rules": {
+    "shops": {
+      "$shopId": {
+        ".read": "auth != null && auth.uid == $shopId",
+        ".write": "auth != null && auth.uid == $shopId",
+        "data": {
+          "cast": { ".read": true },
+          "shifts": { ".read": true },
+          "settings": { ".read": true }
+        },
+        "shiftRequests": { ".write": true },
+        "castLine": { ".read": true, ".write": true },
+        "lottery": { ".read": true, ".write": true }
+      }
+    },
+    "config": {
+      ".read": true,
+      "defaultShopId": { ".write": "auth != null && !data.exists()" },
+      "migratedTo": { ".write": "auth != null && !data.exists()" }
+    },
+    "shiftapp": { ".read": "auth != null", ".write": "auth != null" },
+    "shiftRequests": { ".read": "auth != null", ".write": "auth != null" },
+    "castLine": { ".read": "auth != null", ".write": "auth != null" },
+    "lottery": { ".read": "auth != null", ".write": "auth != null" },
+    "$other": {
+      ".read": "$other !== 'commissionApp'",
+      ".write": "$other !== 'commissionApp'"
+    }
+  }
+}

@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getDatabase } from "firebase/database";
+import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAzhuyDJq_JvfzjOBvs6JjloLbozJmsMLs",
@@ -14,3 +15,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getDatabase(app);
+export const auth = getAuth(app);
+
+// 手元での動作確認用(REACT_APP_SKIP_VERIFY=1 のときだけ)。本番ビルドには入らない
+if (process.env.REACT_APP_SKIP_VERIFY === "1" && typeof window !== "undefined") window.__auth = auth;

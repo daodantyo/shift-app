@@ -3,8 +3,6 @@ import liff from "@line/liff";
 import { db } from "./firebase";
 import { ref, onValue, set, get } from "firebase/database";
 
-const LIFF_ID = "2010692487-HEfxObPq";
-
 const BG = {
   background: "linear-gradient(135deg, #FFF0F5, #FFE4EF)",
   minHeight: "100vh",
@@ -16,9 +14,12 @@ function todayKey() {
   return `${n.getFullYear()}-${p(n.getMonth() + 1)}-${p(n.getDate())}`;
 }
 
-export default function LotteryPage() {
+// 抽選ページ  URL: /?lottery=1&shop=お店ID
+export default function LotteryPage({ shopId }) {
+  const shopBase = `shops/${shopId}`;
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [liffId, setLiffId] = useState(null); // null = 設定をまだ読んでいない
   const [baseProb, setBaseProb] = useState(0.0001);
   const [perShift, setPerShift] = useState(0);
   const [vacancy, setVacancy] = useState("");
@@ -28,38 +29,43 @@ export default function LotteryPage() {
   const [result, setResult] = useState(null);
   const [rolling, setRolling] = useState("🎰");
 
+  // お店の設定(確率・空き状況・LIFF ID)
   useEffect(() => {
+    const settingsRef = ref(db, `${shopBase}/data/settings`);
+    const unsub = onValue(settingsRef, (snap) => {
+      const s = snap.val() || {};
+      if (typeof s.lotteryProb === "number") setBaseProb(s.lotteryProb);
+      if (typeof s.lotteryPerShift === "number") setPerShift(s.lotteryPerShift);
+      setVacancy(s.lotteryVacancy || "");
+      setLiffId(s.liffId || "");
+    });
+    return () => unsub();
+  }, [shopBase]);
+
+  // LIFF ID がわかってから LINE にログインする
+  useEffect(() => {
+    if (liffId === null) return;
+    if (!liffId) { setLoading(false); return; }
     liff
-      .init({ liffId: LIFF_ID })
+      .init({ liffId })
       .then(() => {
         if (!liff.isLoggedIn()) { liff.login(); return null; }
         return liff.getProfile();
       })
       .then((p) => { if (p) setProfile(p); setLoading(false); })
       .catch(() => setLoading(false));
-  }, []);
-
-  useEffect(() => {
-    const settingsRef = ref(db, "shiftapp/settings");
-    const unsub = onValue(settingsRef, (snap) => {
-      const s = snap.val() || {};
-      if (typeof s.lotteryProb === "number") setBaseProb(s.lotteryProb);
-      if (typeof s.lotteryPerShift === "number") setPerShift(s.lotteryPerShift);
-      setVacancy(s.lotteryVacancy || "");
-    });
-    return () => unsub();
-  }, []);
+  }, [liffId]);
 
   useEffect(() => {
     if (!profile || !profile.userId) return;
     let castId = null;
-    get(ref(db, "castLine")).then((snap) => {
+    get(ref(db, `${shopBase}/castLine`)).then((snap) => {
       const cl = snap.val() || {};
       for (const key in cl) {
         if (cl[key] && cl[key].lineUserId === profile.userId) { castId = cl[key].castId; break; }
       }
       if (!castId) return;
-      get(ref(db, "shiftapp/shifts")).then((s2) => {
+      get(ref(db, `${shopBase}/data/shifts`)).then((s2) => {
         const shifts = s2.val() || {};
         const now = new Date();
         const day = now.getDay();
@@ -76,18 +82,18 @@ export default function LotteryPage() {
         setMyShiftDays(cnt);
       });
     }).catch(() => {});
-  }, [profile]);
+  }, [profile, shopBase]);
 
   useEffect(() => {
     if (!profile || !profile.userId) return;
-    const r = ref(db, "lottery/" + profile.userId + "/" + todayKey());
+    const r = ref(db, `${shopBase}/lottery/${profile.userId}/${todayKey()}`);
     get(r).then((snap) => {
       if (snap.exists()) {
         setAlreadyToday(true);
         setResult(snap.val().result || null);
       }
     }).catch(() => {});
-  }, [profile]);
+  }, [profile, shopBase]);
 
   const finalProb = baseProb + myShiftDays * perShift;
 
@@ -112,7 +118,7 @@ export default function LotteryPage() {
     const dname = (profile && profile.displayName) ? profile.displayName : "ゲスト";
 
     try {
-      await set(ref(db, "lottery/" + uid + "/" + todayKey()), {
+      await set(ref(db, `${shopBase}/lottery/${uid}/${todayKey()}`), {
         castName: dname,
         lineUserId: (profile && profile.userId) ? profile.userId : "",
         result: res,
@@ -127,6 +133,7 @@ export default function LotteryPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            shopId,
             toAdmin: true,
             text: "🎉 抽選当選のお知らせ\n\n" + dname + "さんが「当日雑費全額無料」に当選しました！",
           }),
@@ -139,6 +146,16 @@ export default function LotteryPage() {
     return (
       <div style={{ ...BG, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ color: "#FF6B9D", fontWeight: 700, fontSize: 16 }}>読み込み中...</div>
+      </div>
+    );
+  }
+
+  if (!liffId) {
+    return (
+      <div style={{ ...BG, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+        <div style={{ background: "#fff", borderRadius: 16, padding: 24, maxWidth: 360, textAlign: "center", color: "#5C3344", fontWeight: 700, lineHeight: 1.7 }}>
+          このお店のLINE設定(LIFF ID)がまだ登録されていません。<br />お店の管理者にご連絡ください。
+        </div>
       </div>
     );
   }

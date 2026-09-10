@@ -1,8 +1,13 @@
 import { useState, useEffect } from "react";
-import { db } from "./firebase";
+import { db, auth } from "./firebase";
 import { ref, set, onValue, update, remove, get } from "firebase/database";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import ShiftRequestForm from "./ShiftRequestForm";
 import LotteryPage from "./LotteryPage";
+import StaffView from "./StaffView";
+import ShopSettings from "./ShopSettings";
+import { AuthScreen, VerifyScreen } from "./Auth";
+import { useShopId, DEFAULT_LIFF_ID } from "./shop";
 
 const DAYS = ["月", "火", "水", "木", "金", "土", "日"];
 const INITIAL_CAST = [
@@ -84,35 +89,55 @@ function formatYen(val) {
   return "¥" + Number(val).toLocaleString();
 }
 
-export default function CabShift() {
-  // LINEの希望シフトフォームは ?request=1 でアクセスした時だけ表示する
-  const isRequestPage = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("request") === "1";
-  // スタッフ用のシフト閲覧専用ページは ?view=1 でアクセスした時だけ表示する(パスワード不要)
-  const isViewPage = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("view") === "1";
-  const isLotteryPage = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("lottery") === "1";
-
-  // ↓ 管理画面に入るためのパスワード。好きな文字列に変更してください
-  const ADMIN_PASSWORD = "sakura2026";
-
-  const [unlocked, setUnlocked] = useState(
-    typeof window !== "undefined" && localStorage.getItem("shiftAppUnlocked") === "1"
+// 真ん中にメッセージだけ出す画面(読み込み中・エラー用)
+function CenterMessage({ children }) {
+  return (
+    <div style={{ fontFamily: "'Segoe UI','Noto Sans JP',sans-serif", minHeight: "100vh", ...DARK_LINE_BG, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div style={{ background: "#fff", borderRadius: 16, padding: 24, maxWidth: 360, textAlign: "center", color: "#5C3344", fontWeight: 700, lineHeight: 1.7 }}>{children}</div>
+    </div>
   );
-  const [passwordInput, setPasswordInput] = useState("");
-  const [passwordError, setPasswordError] = useState("");
-  // ログイン済みの管理画面を開いているときだけ true
-  // (キャストの提出画面・抽選・閲覧ページ・ログイン前では false)
-  const isAdminScreen = unlocked && !isRequestPage && !isLotteryPage && !isViewPage;
+}
 
-  const handleUnlock = () => {
-    if (passwordInput === ADMIN_PASSWORD) {
-      localStorage.setItem("shiftAppUnlocked", "1");
-      setUnlocked(true);
-      setPasswordError("");
-    } else {
-      setPasswordError("パスワードが違います");
-      setPasswordInput("");
-    }
-  };
+// ===== 入口: URLでページを振り分ける =====
+//  ?request=1 … キャストの希望提出(LINE)   ?view=1 … シフト閲覧   ?lottery=1 … 抽選
+//  それ以外   … お店の管理画面(メールでログイン)
+//  キャスト向けページは ?shop=お店ID で、どのお店かを判別する(shopなしの昔のURLは既定のお店につながる)
+export default function App() {
+  const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams();
+  const isRequestPage = params.get("request") === "1";
+  const isViewPage = params.get("view") === "1";
+  const isLotteryPage = params.get("lottery") === "1";
+  const isStaffPage = isRequestPage || isViewPage || isLotteryPage;
+  const { shopId, status } = useShopId(isStaffPage);
+
+  if (isStaffPage) {
+    if (status === "loading") return <CenterMessage>読み込み中...</CenterMessage>;
+    if (!shopId) return <CenterMessage>このURLにはお店の情報が含まれていません。<br />お店から案内された最新のURLを開いてください。</CenterMessage>;
+    if (isRequestPage) return <ShiftRequestForm shopId={shopId} />;
+    if (isLotteryPage) return <LotteryPage shopId={shopId} />;
+    return <StaffView shopId={shopId} />;
+  }
+  return <AdminGate />;
+}
+
+// ログイン → メール確認 → 管理画面
+function AdminGate() {
+  const [user, setUser] = useState(undefined); // undefined = まだ確認中
+  useEffect(() => onAuthStateChanged(auth, (u) => setUser(u)), []);
+  if (user === undefined) return <CenterMessage>読み込み中...</CenterMessage>;
+  if (!user) return <AuthScreen />;
+  // 手元での動作確認用(.env.local に REACT_APP_SKIP_VERIFY=1 があるときだけメール確認を飛ばす)
+  const skipVerify = process.env.REACT_APP_SKIP_VERIFY === "1";
+  if (!user.emailVerified && !skipVerify) return <VerifyScreen user={user} />;
+  return <CabShift user={user} shopId={user.uid} />;
+}
+
+// ===== お店の管理画面 =====
+// ログインした人の uid がそのままお店IDで、データは shops/{お店ID}/ の下に入る
+function CabShift({ user, shopId }) {
+  const shopBase = `shops/${shopId}`;
+  // 管理画面は必ずログイン後に表示されるので、自動処理(バックアップ・予定の通知)は常に有効
+  const isAdminScreen = true;
 
   const [tab, setTab] = useState("shift");
   const [cast, setCast] = useState(INITIAL_CAST);
@@ -143,13 +168,18 @@ export default function CabShift() {
   const [lotteryData, setLotteryData] = useState({}); // 抽選の記録
   const [lineModal, setLineModal] = useState(null); // LINE送信モーダル
   const [lineSending, setLineSending] = useState(false);
+  // 以前(1店舗だけの頃)のデータを、このお店に引き継ぐための状態
+  const [shopHasData, setShopHasData] = useState(true);
+  const [legacyAvailable, setLegacyAvailable] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [daySumDateStr, setDaySumDateStr] = useState(null); // その日の合計を見る日
 
   // Load from Firebase
   useEffect(() => {
-    const dataRef = ref(db, "shiftapp");
+    const dataRef = ref(db, `${shopBase}/data`);
     const unsub = onValue(dataRef, (snapshot) => {
       const data = snapshot.val();
+      setShopHasData(!!(data && data.cast));
       if (data) {
         if (data.cast) setCast(data.cast);
         if (data.shifts) setShifts(data.shifts);
@@ -166,7 +196,7 @@ export default function CabShift() {
 
   // 希望シフトの読み込み
   useEffect(() => {
-    const reqRef = ref(db, "shiftRequests");
+    const reqRef = ref(db, `${shopBase}/shiftRequests`);
     const unsub = onValue(reqRef, (snapshot) => {
       setRequests(snapshot.val() || {});
     });
@@ -175,7 +205,7 @@ export default function CabShift() {
 
   // LINE対応表(名前↔LINE)の読み込み
   useEffect(() => {
-    const clRef = ref(db, "castLine");
+    const clRef = ref(db, `${shopBase}/castLine`);
     const unsub = onValue(clRef, (snapshot) => {
       setCastLine(snapshot.val() || {});
     });
@@ -184,7 +214,7 @@ export default function CabShift() {
 
   // 抽選の記録を読み込む
   useEffect(() => {
-    const lRef = ref(db, "lottery");
+    const lRef = ref(db, `${shopBase}/lottery`);
     const unsub = onValue(lRef, (snapshot) => {
       setLotteryData(snapshot.val() || {});
     });
@@ -194,7 +224,7 @@ export default function CabShift() {
   const saveToFirebase = (newData) => {
     // 変わった項目だけを書き込む(全体を丸ごと上書きしない)。
     // 2台以上で同時に使っていても、片方の変更がもう片方に消されにくくなる
-    update(ref(db, "shiftapp"), newData).then(() => {
+    update(ref(db, `${shopBase}/data`), newData).then(() => {
       setSaved(true);
       setTimeout(() => setSaved(false), 1500);
     });
@@ -244,13 +274,59 @@ export default function CabShift() {
         settings: data.settings || { showConfirmedShifts: true },
         schedule: data.schedule || {},
       };
-      set(ref(db, "shiftapp"), payload);
-      if (data.shiftRequests) set(ref(db, "shiftRequests"), data.shiftRequests);
-      if (data.castLine) set(ref(db, "castLine"), data.castLine);
+      set(ref(db, `${shopBase}/data`), payload);
+      if (data.shiftRequests) set(ref(db, `${shopBase}/shiftRequests`), data.shiftRequests);
+      if (data.castLine) set(ref(db, `${shopBase}/castLine`), data.castLine);
       alert("復元しました！画面を再読み込みします。");
       setTimeout(() => window.location.reload(), 1200);
     };
     reader.readAsText(file);
+  };
+
+  // ===== 以前(1店舗だけの頃)のデータの引き継ぎ =====
+  // このお店にまだデータがなく、昔の場所(shiftapp)にデータが残っていて、まだ誰も引き継いでいなければ案内を出す
+  useEffect(() => {
+    if (loading || shopHasData) { setLegacyAvailable(false); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const migrated = (await get(ref(db, "config/migratedTo"))).val();
+        if (migrated) return;
+        const legacyCast = (await get(ref(db, "shiftapp/cast"))).val();
+        if (!cancelled && legacyCast) setLegacyAvailable(true);
+      } catch (e) { /* 読めなければ案内しない */ }
+    })();
+    return () => { cancelled = true; };
+  }, [loading, shopHasData]);
+
+  const importLegacy = async () => {
+    if (importing) return;
+    if (!window.confirm("以前のデータ(シフト・売上・経費・設定・希望シフト・LINE対応表・抽選記録)を、このお店に引き継ぎます。よろしいですか?")) return;
+    setImporting(true);
+    try {
+      const [main, reqs, cl, lot] = await Promise.all([
+        get(ref(db, "shiftapp")), get(ref(db, "shiftRequests")), get(ref(db, "castLine")), get(ref(db, "lottery")),
+      ]);
+      const data = main.val() || {};
+      const newSettings = { showConfirmedShifts: true, ...(data.settings || {}) };
+      // 今までのLINE(LIFF)がそのまま使えるように、LIFF IDを設定に入れておく
+      if (!newSettings.liffId) newSettings.liffId = DEFAULT_LIFF_ID;
+      const payload = {};
+      payload[`${shopBase}/data`] = { ...data, settings: newSettings };
+      if (reqs.exists()) payload[`${shopBase}/shiftRequests`] = reqs.val();
+      if (cl.exists()) payload[`${shopBase}/castLine`] = cl.val();
+      if (lot.exists()) payload[`${shopBase}/lottery`] = lot.val();
+      // 昔のURL(shopなし)が、このお店につながるようにする
+      payload["config/defaultShopId"] = shopId;
+      payload["config/migratedTo"] = shopId;
+      await update(ref(db), payload);
+      setLegacyAvailable(false);
+      alert("引き継ぎました！");
+    } catch (e) {
+      alert("引き継ぎに失敗しました: " + e);
+    } finally {
+      setImporting(false);
+    }
   };
 
   // 1日1回、パソコンでアプリを開いたときだけ自動バックアップ(スマホは除外)
@@ -302,7 +378,7 @@ export default function CabShift() {
         fetch("/api/send-line", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ toAdmin: true, text }),
+          body: JSON.stringify({ shopId, toAdmin: true, text }),
         }).catch(() => {});
       }, 3000);
     } catch (e) { /* 自動送信の失敗はアプリ本体に影響させない */ }
@@ -664,7 +740,7 @@ export default function CabShift() {
       const base = typeof window !== "undefined" ? window.location.origin : "";
       lines.push("");
       lines.push("🎰 全額雑費無料抽選はこちら");
-      lines.push(`${base}/?lottery=1`);
+      lines.push(`${base}/?lottery=1&shop=${shopId}`);
       lines.push("(当たると当日雑費が全額無料に！お一人様1回)");
     }
     lines.push("");
@@ -699,7 +775,7 @@ export default function CabShift() {
     const base = typeof window !== "undefined" ? window.location.origin : "";
     lines.push("");
     lines.push("抽選はこちら👇");
-    lines.push(`${base}/?lottery=1`);
+    lines.push(`${base}/?lottery=1&shop=${shopId}`);
     lines.push("(当たると当日雑費が全額無料に！お一人様1回)");
     return lines.join("\n");
   };
@@ -710,7 +786,7 @@ export default function CabShift() {
     // (時間を入力した直後でも、保存が間に合わずに「休み」で送られるのを防ぐ)
     let latestShifts = shifts;
     try {
-      const snap = await get(ref(db, "shiftapp/shifts"));
+      const snap = await get(ref(db, `${shopBase}/data/shifts`));
       if (snap.exists()) latestShifts = snap.val() || {};
     } catch (e) {
       // 読み直しに失敗したら、画面上の今の値をそのまま使う
@@ -784,7 +860,7 @@ export default function CabShift() {
       const res = await fetch("/api/send-line", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages }),
+        body: JSON.stringify({ shopId, messages }),
       });
       const data = await res.json();
       if (data && data.ok) {
@@ -816,104 +892,20 @@ export default function CabShift() {
     });
     setShifts(newShifts);
     saveToFirebase({ shifts: newShifts });
-    update(ref(db, `shiftRequests/${key}`), { status: "approved" });
+    update(ref(db, `${shopBase}/shiftRequests/${key}`), { status: "approved" });
   };
 
   const rejectRequest = (key) => {
-    update(ref(db, `shiftRequests/${key}`), { status: "rejected" });
+    update(ref(db, `${shopBase}/shiftRequests/${key}`), { status: "rejected" });
   };
 
   const deleteRequest = (key) => {
-    remove(ref(db, `shiftRequests/${key}`));
+    remove(ref(db, `${shopBase}/shiftRequests/${key}`));
   };
 
   const pendingRequests = Object.entries(requests || {})
     .filter(([, r]) => r.status === "pending" || r.status === "approved")
     .sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
-
-  // LINEから開いた場合は希望シフト提出フォームだけを表示する
-  if (isRequestPage) {
-    return <ShiftRequestForm />;
-  }
-
-  if (isLotteryPage) {
-    return <LotteryPage />;
-  }
-
-  // スタッフ向け:シフトを見るだけの画面(編集不可・パスワード不要)
-  if (isViewPage) {
-    return (
-      <div style={{ fontFamily: "'Segoe UI','Noto Sans JP',sans-serif", minHeight: "100vh", ...DARK_LINE_BG, color: "#5C3344", padding: 16 }}>
-        <div style={{ textAlign: "center", fontWeight: 700, fontSize: 18, marginBottom: 16, color: "#5C3344" }}>🌸 シフト表</div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, maxWidth: 500, margin: "0 auto 16px" }}>
-          <button onClick={() => setWeekOffset((w) => w - 1)} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}>← 前週</button>
-          <div style={{ fontWeight: 700, fontSize: 15 }}>{formatDate(dates[0])} 〜 {formatDate(dates[6])}</div>
-          <button onClick={() => setWeekOffset((w) => w + 1)} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600, color: "#FF6B9D" }}>次週 →</button>
-        </div>
-        <div style={{ maxWidth: 500, margin: "0 auto" }}>
-          {dates.map((d, i) => {
-            const dateStr = d.toDateString();
-            const isToday = d.toDateString() === new Date().toDateString();
-            const isWeekend = i >= 5;
-            const working = cast.filter((c) => getShift(c.id, dateStr).status !== "off")
-              .sort((a, b) => (getShift(a.id, dateStr).in || "99:99").localeCompare(getShift(b.id, dateStr).in || "99:99"));
-            return (
-              <div key={i} style={{ background: "#fff", borderRadius: 12, padding: "12px 16px", marginBottom: 10, border: isToday ? "2px solid #FFC93C" : "2px solid transparent" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: working.length ? 8 : 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: isWeekend ? "#FF4D8D" : "#D4789F" }}>{DAYS[i]}</div>
-                  <div style={{ fontWeight: 800, fontSize: 15, color: isToday ? "#FFC93C" : "#5C3344" }}>{formatDate(d)}</div>
-                  <div style={{ fontSize: 12, color: "#D4789F" }}>{working.length}名出勤</div>
-                </div>
-                {working.length === 0 ? (
-                  <div style={{ fontSize: 12, color: "#FFB6D5" }}>出勤者なし</div>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    {working.map((c) => {
-                      const s = getShift(c.id, dateStr);
-                      return (
-                        <div key={c.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#FFF5F8", borderRadius: 8, padding: "6px 10px" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <div style={{ width: 8, height: 8, borderRadius: "50%", background: rankColor(c.rank) }} />
-                            <div style={{ fontWeight: 700, fontSize: 13 }}>{c.name}</div>
-                          </div>
-                          <div style={{ fontSize: 12, color: "#D4789F", fontWeight: 700 }}>{s.in || "?"} 〜 {s.out || "?"}</div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
-  if (!unlocked) {
-    return (
-      <div style={{ fontFamily: "'Segoe UI','Noto Sans JP',sans-serif", minHeight: "100vh", ...DARK_LINE_BG, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
-        <div style={{ fontSize: 40 }}>🔒</div>
-        <div style={{ color: "#5C3344", fontWeight: 700, fontSize: 18 }}>管理画面ログイン</div>
-        <input
-          type="password"
-          value={passwordInput}
-          onChange={(e) => setPasswordInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleUnlock()}
-          placeholder="パスワードを入力"
-          autoFocus
-          style={{ padding: "12px 16px", borderRadius: 10, border: "1.5px solid #FFD9E8", fontSize: 16, width: 240, textAlign: "center", outline: "none" }}
-        />
-        {passwordError && <div style={{ color: "#FF6B6B", fontSize: 13, fontWeight: 700 }}>{passwordError}</div>}
-        <button
-          onClick={handleUnlock}
-          style={{ background: "linear-gradient(135deg, #FF8FAB, #FF6B9D)", color: "#fff", border: "none", borderRadius: 10, padding: "12px 32px", fontWeight: 700, fontSize: 15, cursor: "pointer" }}
-        >
-          ログイン
-        </button>
-      </div>
-    );
-  }
 
   if (loading) return (
     <div style={{ fontFamily: "'Segoe UI','Noto Sans JP',sans-serif", minHeight: "100vh", ...DARK_LINE_BG, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12 }}>
@@ -932,6 +924,13 @@ export default function CabShift() {
             <div style={{ color: "#D4789F", fontSize: 12 }}>在籍 {cast.length}名</div>
           </div>
           {saved && <div style={{ background: "#6BCB77", color: "#fff", borderRadius: 20, padding: "4px 14px", fontSize: 12, fontWeight: 700 }}>☁️ 保存済み</div>}
+          <button
+            onClick={() => { if (window.confirm("ログアウトしますか?")) signOut(auth); }}
+            title={user.email || ""}
+            style={{ background: "rgba(255,255,255,0.7)", border: "none", borderRadius: 20, padding: "6px 12px", fontSize: 12, fontWeight: 700, color: "#D4789F", cursor: "pointer" }}
+          >
+            ログアウト
+          </button>
         </div>
         <div style={{ display: "flex", flexWrap: "wrap" }}>
           {[{ id: "shift", label: "シフト" }, { id: "sales", label: "売上" }, { id: "expenses", label: "経費" }, { id: "summary", label: "集計" }, { id: "schedule", label: "予定表" }, { id: "cast", label: "キャスト" }, { id: "requests", label: `希望シフト${pendingRequests.filter(([, r]) => r.status === "pending").length ? ` (${pendingRequests.filter(([, r]) => r.status === "pending").length})` : ""}` }].map((t) => (
@@ -941,6 +940,17 @@ export default function CabShift() {
       </div>
 
       <div style={{ padding: "20px 16px", maxWidth: 1000, margin: "0 auto" }}>
+        {/* 以前のデータの引き継ぎ案内 */}
+        {legacyAvailable && (
+          <div style={{ background: "#FFF7E0", border: "2px solid #FFD666", borderRadius: 12, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#8a6d1a", lineHeight: 1.6 }}>
+              以前のデータ(シフト・売上・経費など)が見つかりました。このお店に引き継ぎますか?
+            </div>
+            <button onClick={importLegacy} disabled={importing} style={{ background: "linear-gradient(135deg, #FFC93C, #F5A623)", color: "#fff", border: "none", borderRadius: 10, padding: "10px 18px", fontWeight: 800, fontSize: 13, cursor: "pointer", flexShrink: 0 }}>
+              {importing ? "引き継ぎ中..." : "📦 以前のデータを引き継ぐ"}
+            </button>
+          </div>
+        )}
         {/* 支払日のお知らせ(3日前から表示) */}
         {(() => {
           const upcoming = recurringList
@@ -1910,6 +1920,7 @@ export default function CabShift() {
 
         {tab === "cast" && (
           <div>
+            <ShopSettings shopId={shopId} settings={settings} updateSettings={updateSettings} />
             <div style={{ background: "#fff", borderRadius: 14, padding: 16, marginBottom: 16, border: "2px solid #B7E4C7" }}>
               <div style={{ fontWeight: 700, fontSize: 14, color: "#4CAF50", marginBottom: 4 }}>💾 データのバックアップ</div>
               <div style={{ fontSize: 11, color: "#888", marginBottom: 12 }}>大事なデータを、まるごとファイルに保存できます。パソコンで開くと1日1回、自動でも保存されます。</div>
@@ -2108,7 +2119,7 @@ export default function CabShift() {
               <button
                 onClick={() => {
                   if (window.confirm("全員の抽選記録をリセットします。もう一度みんなが引けるようになります。よろしいですか?")) {
-                    set(ref(db, "lottery"), null);
+                    set(ref(db, `${shopBase}/lottery`), null);
                   }
                 }}
                 style={{ width: "100%", background: "#fff", color: "#FF6B6B", border: "1.5px solid #FFC0C0", borderRadius: 10, padding: "10px 0", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
