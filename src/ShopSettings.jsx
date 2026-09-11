@@ -20,7 +20,8 @@ const S = {
   copy: { flexShrink: 0, background: "#fff", border: "1px solid #FFD9E8", borderRadius: 6, padding: "5px 10px", fontSize: 11, fontWeight: 700, color: "#FF6B9D", cursor: "pointer" },
 };
 
-export default function ShopSettings({ shopId, settings, updateSettings }) {
+// full: LINE連携・抽選を使えるお店(自分のお店)のときだけ true。それ以外は店名とURLだけ
+export default function ShopSettings({ shopId, settings, updateSettings, full }) {
   const shopBase = `shops/${shopId}`;
   const [shopName, setShopName] = useState(settings.shopName || "");
   const [liffId, setLiffId] = useState(settings.liffId || "");
@@ -67,11 +68,16 @@ export default function ShopSettings({ shopId, settings, updateSettings }) {
     catch { window.prompt("このURLをコピーしてください", text); }
   };
 
-  const urls = [
-    { kind: "request", label: "希望シフト提出(LINEのLIFFに登録するURL)", url: staffUrl("request", shopId) },
-    { kind: "view", label: "シフト閲覧(見るだけ)", url: staffUrl("view", shopId) },
-    { kind: "lottery", label: "抽選ページ", url: staffUrl("lottery", shopId) },
-  ];
+  const urls = full
+    ? [
+        { kind: "request", label: "希望シフト提出(LINEのLIFFに登録するURL)", url: staffUrl("request", shopId) },
+        { kind: "view", label: "シフト閲覧(見るだけ)", url: staffUrl("view", shopId) },
+        { kind: "lottery", label: "抽選ページ", url: staffUrl("lottery", shopId) },
+      ]
+    : [
+        { kind: "request", label: "希望シフト提出(キャストに配るURL)", url: staffUrl("request", shopId) },
+        { kind: "view", label: "シフト閲覧(見るだけ)", url: staffUrl("view", shopId) },
+      ];
 
   return (
     <div style={S.card}>
@@ -91,24 +97,27 @@ export default function ShopSettings({ shopId, settings, updateSettings }) {
 
           <div style={S.label}>お店の名前</div>
           <input style={S.input} value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="例: さくら" />
-          <div style={S.label}>LIFF ID(LINE Developers で作った「LIFFアプリ」のID)</div>
-          <input style={S.input} value={liffId} onChange={(e) => setLiffId(e.target.value)} placeholder="例: 2010692487-XXXXXXXX" />
-          <div style={S.note}>キャストがLINEから希望シフトを出すときに使います。LIFFアプリの「エンドポイントURL」には、下の「希望シフト提出」のURLを登録してください。</div>
-          <button style={S.save} onClick={saveBasic}>店名・LIFF IDを保存</button>
+          {full && (<>
+            <div style={S.label}>LIFF ID(LINE Developers で作った「LIFFアプリ」のID)</div>
+            <input style={S.input} value={liffId} onChange={(e) => setLiffId(e.target.value)} placeholder="例: 2010692487-XXXXXXXX" />
+            <div style={S.note}>キャストがLINEから希望シフトを出すときに使います。LIFFアプリの「エンドポイントURL」には、下の「希望シフト提出」のURLを登録してください。</div>
+          </>)}
+          <button style={S.save} onClick={saveBasic}>{full ? "店名・LIFF IDを保存" : "店名を保存"}</button>
 
-          <div style={{ borderTop: "1px solid #FFF0F5", margin: "16px 0" }} />
-
-          <div style={S.label}>LINE公式アカウントのチャネルアクセストークン {hasToken && <span style={{ color: "#4CAF50" }}>(登録済み)</span>}</div>
-          <input style={S.input} type="password" value={lineToken} onChange={(e) => setLineToken(e.target.value)} placeholder={hasToken ? "変更するときだけ入力" : "LINE Developers の Messaging API 設定からコピー"} autoComplete="new-password" />
-          <div style={S.label}>管理者(お店)のLINEユーザーID</div>
-          <input style={S.input} value={adminLineId} onChange={(e) => setAdminLineId(e.target.value)} placeholder="Uから始まる33文字のID。抽選の当選や今日の予定がここに届きます" />
-          <div style={S.note}>トークンはお店の人だけが読める場所に保存されます。キャストへのシフト送信や、当選のお知らせに使います。</div>
-          <button style={S.save} onClick={saveSecrets}>LINEの設定を保存</button>
+          {full && (<>
+            <div style={{ borderTop: "1px solid #FFF0F5", margin: "16px 0" }} />
+            <div style={S.label}>LINE公式アカウントのチャネルアクセストークン {hasToken && <span style={{ color: "#4CAF50" }}>(登録済み)</span>}</div>
+            <input style={S.input} type="password" value={lineToken} onChange={(e) => setLineToken(e.target.value)} placeholder={hasToken ? "変更するときだけ入力" : "未入力なら Vercel の環境変数(LINE_TOKEN)が使われます"} autoComplete="new-password" />
+            <div style={S.label}>管理者(お店)のLINEユーザーID</div>
+            <input style={S.input} value={adminLineId} onChange={(e) => setAdminLineId(e.target.value)} placeholder="Uから始まる33文字のID。抽選の当選や今日の予定がここに届きます" />
+            <div style={S.note}>トークンはお店の人だけが読める場所に保存されます。キャストへのシフト送信や、当選のお知らせに使います。</div>
+            <button style={S.save} onClick={saveSecrets}>LINEの設定を保存</button>
+          </>)}
 
           <div style={{ borderTop: "1px solid #FFF0F5", margin: "16px 0" }} />
 
           <div style={S.label}>キャストに案内するURL</div>
-          <div style={S.note}>お店ごとに専用のURLです。そのままLINEで送るか、LIFFアプリのエンドポイントURLに登録してください。</div>
+          <div style={S.note}>{full ? "お店ごとに専用のURLです。そのままLINEで送るか、LIFFアプリのエンドポイントURLに登録してください。" : "お店ごとに専用のURLです。キャストにそのまま送ってください(希望提出は名前＋パスワードで使えます)。"}</div>
           {urls.map((u) => (
             <div key={u.kind}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#D4789F", marginBottom: 3 }}>{u.label}</div>

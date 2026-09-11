@@ -184,6 +184,8 @@ function CabShift({ user, shopId }) {
   const [stats, setStats] = useState({});
   const [expenses, setExpenses] = useState({});
   const [settings, setSettings] = useState({ showConfirmedShifts: true });
+  // フル機能(LINE送信・Venrey書き出し・抽選)を使えるお店かどうか。引き継いだ自分のお店だけ true
+  const fullFeatures = settings.features === "full";
   const [schedule, setSchedule] = useState({}); // 予定表 {dateStr: {id: {type, text}}}
   const [scheduleMonth, setScheduleMonth] = useState(new Date().getMonth());
   const [scheduleYear, setScheduleYear] = useState(new Date().getFullYear());
@@ -347,6 +349,8 @@ function CabShift({ user, shopId }) {
       const newSettings = { showConfirmedShifts: true, ...(data.settings || {}) };
       // 今までのLINE(LIFF)がそのまま使えるように、LIFF IDを設定に入れておく
       if (!newSettings.liffId) newSettings.liffId = DEFAULT_LIFF_ID;
+      // 引き継いだお店(自分のお店)だけ、LINE・Venrey・抽選のフル機能を使える
+      newSettings.features = "full";
       const payload = {};
       payload[`${shopBase}/data`] = { ...data, settings: newSettings };
       if (reqs.exists()) payload[`${shopBase}/shiftRequests`] = reqs.val();
@@ -393,6 +397,7 @@ function CabShift({ user, shopId }) {
     // ログイン済みの管理画面だけで実行する
     // (キャストがLINEから提出画面を開くたびに管理者へ届いてしまうのを防ぐ)
     if (!isAdminScreen) return;
+    if (!fullFeatures) return; // LINEを使わないお店では送らない
     try {
       const pad = (n) => String(n).padStart(2, "0");
       const now = new Date();
@@ -418,7 +423,7 @@ function CabShift({ user, shopId }) {
         }).catch(() => {});
       }, 3000);
     } catch (e) { /* 自動送信の失敗はアプリ本体に影響させない */ }
-  }, [loading, isAdminScreen]);
+  }, [loading, isAdminScreen, fullFeatures]);
   // 予定を追加
   const addPlan = (dateStr, type, text) => {
     if (!text.trim()) return;
@@ -1086,8 +1091,8 @@ function CabShift({ user, shopId }) {
             </div>
             <div style={{ textAlign: "right", marginBottom: 12, display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
               <button onClick={() => { const pad = (n) => String(n).padStart(2, "0"); const l = `${dates[0].getFullYear()}-${pad(dates[0].getMonth() + 1)}-${pad(dates[0].getDate())}`; exportShiftCSV(dates, l); }} style={{ background: "linear-gradient(135deg, #7ED9A7, #4CBF87)", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", boxShadow: "0 2px 8px rgba(76,191,135,0.3)" }}>📥 この週をCSV書き出し</button>
-              <button onClick={() => { const pad = (n) => String(n).padStart(2, "0"); const l = `${dates[0].getFullYear()}-${pad(dates[0].getMonth() + 1)}-${pad(dates[0].getDate())}`; exportShiftCSV(dates, l); }} style={{ background: "linear-gradient(135deg, #C9A0FF, #9B6DE0)", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", boxShadow: "0 2px 8px rgba(155,109,224,0.3)" }}>🔄 Venrey用に書き出し</button>
-              <button onClick={() => openLineModal(dates)} style={{ background: "linear-gradient(135deg, #06C755, #04A544)", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", boxShadow: "0 2px 8px rgba(6,199,85,0.3)" }}>📩 LINEで送信</button>
+              {fullFeatures && <button onClick={() => { const pad = (n) => String(n).padStart(2, "0"); const l = `${dates[0].getFullYear()}-${pad(dates[0].getMonth() + 1)}-${pad(dates[0].getDate())}`; exportShiftCSV(dates, l); }} style={{ background: "linear-gradient(135deg, #C9A0FF, #9B6DE0)", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", boxShadow: "0 2px 8px rgba(155,109,224,0.3)" }}>🔄 Venrey用に書き出し</button>}
+              {fullFeatures && <button onClick={() => openLineModal(dates)} style={{ background: "linear-gradient(135deg, #06C755, #04A544)", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", boxShadow: "0 2px 8px rgba(6,199,85,0.3)" }}>📩 LINEで送信</button>}
             </div>
 
             {/* ===== スマホ用レイアウト:今日(選択日)を大きく表示 ===== */}
@@ -1295,7 +1300,7 @@ function CabShift({ user, shopId }) {
                 </div>
                 <div style={{ textAlign: "right", marginBottom: 12, display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
                   <button onClick={() => exportShiftCSV(monthDates, `${summaryYear}-${String(summaryMonth + 1).padStart(2, "0")}`)} style={{ background: "linear-gradient(135deg, #7ED9A7, #4CBF87)", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", boxShadow: "0 2px 8px rgba(76,191,135,0.3)" }}>📥 この月をCSV書き出し</button>
-                  <button onClick={() => openLineModal(monthDates, `${summaryMonth + 1}月`)} style={{ background: "linear-gradient(135deg, #06C755, #04A544)", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", boxShadow: "0 2px 8px rgba(6,199,85,0.3)" }}>📩 この月をLINEで送信</button>
+                  {fullFeatures && <button onClick={() => openLineModal(monthDates, `${summaryMonth + 1}月`)} style={{ background: "linear-gradient(135deg, #06C755, #04A544)", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", boxShadow: "0 2px 8px rgba(6,199,85,0.3)" }}>📩 この月をLINEで送信</button>}
                 </div>
                 {monthDates.map((d, i) => {
                   const dateStr = d.toDateString();
@@ -1963,7 +1968,7 @@ function CabShift({ user, shopId }) {
 
         {tab === "cast" && (
           <div>
-            <ShopSettings shopId={shopId} settings={settings} updateSettings={updateSettings} />
+            <ShopSettings shopId={shopId} settings={settings} updateSettings={updateSettings} full={fullFeatures} />
             <div style={{ background: "#fff", borderRadius: 14, padding: 16, marginBottom: 16, border: "2px solid #B7E4C7" }}>
               <div style={{ fontWeight: 700, fontSize: 14, color: "#4CAF50", marginBottom: 4 }}>💾 データのバックアップ</div>
               <div style={{ fontSize: 11, color: "#888", marginBottom: 12 }}>大事なデータを、まるごとファイルに保存できます。パソコンで開くと1日1回、自動でも保存されます。</div>
@@ -2016,7 +2021,7 @@ function CabShift({ user, shopId }) {
                         🔑 {member.password ? member.password : "パスワード未設定"}
                       </div>
                       <div style={{ fontSize: 11, marginTop: 3, fontWeight: 700, color: castLine[String(member.id)]?.lineUserId ? "#04A544" : "#aaa" }}>
-                        {castLine[String(member.id)]?.lineUserId ? "📩 LINE登録済み" : "📩 LINE未登録"}
+                        {fullFeatures ? (castLine[String(member.id)]?.lineUserId ? "📩 LINE登録済み" : "📩 LINE未登録") : ""}
                       </div>
                       <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
                         <span style={{ fontSize: 11, color: "#FF6B6B" }}>本指名 {totalStat(member.id, "douhan")}</span>
@@ -2035,7 +2040,7 @@ function CabShift({ user, shopId }) {
 
         {tab === "requests" && (
           <div>
-            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>LINEからの希望シフト</div>
+            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>{fullFeatures ? "LINEからの希望シフト" : "キャストからの希望シフト"}</div>
 
             <div style={{ background: "#fff", borderRadius: 14, padding: "14px 18px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
@@ -2072,6 +2077,8 @@ function CabShift({ user, shopId }) {
               </button>
             </div>
 
+            {/* 抽選・LINE送信は、フル機能のお店(自分のお店)だけ */}
+            {fullFeatures && (
             <div style={{ background: "#fff", borderRadius: 14, padding: "16px 18px", marginBottom: 16, border: "2px solid #FFD9E8" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                 <div>
@@ -2170,6 +2177,7 @@ function CabShift({ user, shopId }) {
                 🔄 抽選をリセット(全員もう一度引ける)
               </button>
             </div>
+            )}
 
             {pendingRequests.length === 0 && (
               <div style={{ textAlign: "center", color: "#D4789F", padding: 40, background: "#fff", borderRadius: 14 }}>
