@@ -185,7 +185,12 @@ function CabShift({ user, shopId }) {
   const [expenses, setExpenses] = useState({});
   const [settings, setSettings] = useState({ showConfirmedShifts: true });
   // フル機能(LINE送信・Venrey書き出し・抽選)を使えるお店かどうか。引き継いだ自分のお店だけ true
-  const fullFeatures = settings.features === "full";
+  // 以前のデータを引き継いだお店(config/migratedTo に記録)は、設定に印がなくてもフル機能
+  const [isMigratedShop, setIsMigratedShop] = useState(false);
+  useEffect(() => {
+    get(ref(db, "config/migratedTo")).then((snap) => setIsMigratedShop(snap.val() === shopId)).catch(() => {});
+  }, [shopId]);
+  const fullFeatures = settings.features === "full" || isMigratedShop;
   const [schedule, setSchedule] = useState({}); // 予定表 {dateStr: {id: {type, text}}}
   const [scheduleMonth, setScheduleMonth] = useState(new Date().getMonth());
   const [scheduleYear, setScheduleYear] = useState(new Date().getFullYear());
