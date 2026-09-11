@@ -236,16 +236,8 @@ export default function ShiftRequestForm({ shopId }) {
     );
   }
 
-  // お店側でLIFF IDが未設定なら、提出はできない
-  if (!liffId) {
-    return (
-      <div style={{ minHeight: "100vh", padding: 40, display: "flex", alignItems: "center", justifyContent: "center", ...DARK_LINE_BG }}>
-        <div style={{ background: "#fff", borderRadius: 16, padding: 24, maxWidth: 360, textAlign: "center", color: "#5C3344", fontWeight: 700, lineHeight: 1.7 }}>
-          このお店のLINE設定(LIFF ID)がまだ登録されていません。<br />お店の管理者にご連絡ください。
-        </div>
-      </div>
-    );
-  }
+  // お店側でLIFF IDが未設定でも、名前＋パスワードで提出できる(LINEでのお知らせだけ届かない)
+  const noLine = !liffId;
 
 
   if (submitted) {
@@ -281,6 +273,11 @@ export default function ShiftRequestForm({ shopId }) {
       <h2 style={{ color: "#5C3344", textAlign: "center", marginBottom: 4 }}>
         希望シフト提出
       </h2>
+      {noLine && (
+        <div style={{ textAlign: "center", fontSize: 11, color: "#D4789F", marginBottom: 12 }}>
+          このお店はLINE連携なしで使っています(確定シフトはお店から直接お知らせがあります)
+        </div>
+      )}
 
       {showConfirmedShifts && (
       <div style={{ marginBottom: 16 }}>
