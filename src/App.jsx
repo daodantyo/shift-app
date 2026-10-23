@@ -124,8 +124,8 @@ function calcHours(inTime, outTime) {
 const EARLY_BEFORE_MIN = 16 * 60;
 const DAY_START_MIN = 6 * 60;
 const SHIFT_KINDS = {
-  early: { label: "早", name: "早番", hint: "16:00より前に出勤", color: "#BF5A00", bg: "#FFEBD2", border: "#F4B976", btn: "linear-gradient(135deg, #F5A03C, #D9730D)" },
-  late: { label: "遅", name: "遅番", hint: "16:00から出勤", color: "#3A63CF", bg: "#E1EAFF", border: "#93AEF0", btn: "linear-gradient(135deg, #7C9CF0, #4A72DE)" },
+  early: { label: "早", name: "早番", hint: "16:00より前", color: "#BF5A00", bg: "#FFEBD2", border: "#F4B976", btn: "linear-gradient(135deg, #F5A03C, #D9730D)" },
+  late: { label: "遅", name: "遅番", hint: "16:00から", color: "#3A63CF", bg: "#E1EAFF", border: "#93AEF0", btn: "linear-gradient(135deg, #7C9CF0, #4A72DE)" },
 };
 function shiftKindOf(inTime) {
   const m = /^(\d{1,2}):(\d{2})$/.exec(inTime || "");
@@ -139,16 +139,17 @@ function ShiftBadge({ kind, big }) {
   return <span style={{ display: "inline-block", background: kind.color, color: "#fff", borderRadius: 3, padding: big ? "0 5px" : "0 3px", fontSize: big ? 11 : 9, fontWeight: 800, lineHeight: big ? "16px" : "13px", marginRight: 3, verticalAlign: "middle" }}>{kind.label}</span>;
 }
 
-// 色の説明(早番・遅番を、1つのバナーにまとめる。左がオレンジの早番、右が青の遅番)
+// 色の説明(早番・遅番を、右寄せの小さな1つの枠にまとめる。左がオレンジの早番、右が青の遅番)
 function ShiftLegend() {
   return (
-    <div style={{ display: "flex", borderRadius: 10, overflow: "hidden", marginBottom: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.12)", color: "#fff", textAlign: "center" }}>
-      {[SHIFT_KINDS.early, SHIFT_KINDS.late].map((k) => (
-        <div key={k.name} style={{ flex: 1, background: k.color, padding: "8px 6px", fontWeight: 800, fontSize: 14, lineHeight: 1.3 }}>
-          {k.name}
-          <div style={{ fontSize: 11, fontWeight: 600 }}>{k.hint}</div>
-        </div>
-      ))}
+    <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+      <div style={{ display: "inline-flex", borderRadius: 8, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.18)", color: "#fff", fontSize: 11, lineHeight: 1.3 }}>
+        {[SHIFT_KINDS.early, SHIFT_KINDS.late].map((k) => (
+          <span key={k.name} style={{ background: k.color, padding: "4px 10px", whiteSpace: "nowrap" }}>
+            <b style={{ fontWeight: 800 }}>{k.name}</b> {k.hint}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
