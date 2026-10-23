@@ -124,8 +124,8 @@ function calcHours(inTime, outTime) {
 const EARLY_BEFORE_MIN = 16 * 60;
 const DAY_START_MIN = 6 * 60;
 const SHIFT_KINDS = {
-  early: { label: "早", name: "早番", hint: "16:00より前", color: "#BF5A00", bg: "#FFEBD2", border: "#F4B976", btn: "linear-gradient(135deg, #F5A03C, #D9730D)" },
-  late: { label: "遅", name: "遅番", hint: "16:00から", color: "#3A63CF", bg: "#E1EAFF", border: "#93AEF0", btn: "linear-gradient(135deg, #7C9CF0, #4A72DE)" },
+  early: { label: "早", name: "早番", start: "12:00", color: "#BF5A00", bg: "#FFEBD2", border: "#F4B976", btn: "linear-gradient(135deg, #F5A03C, #D9730D)" },
+  late: { label: "遅", name: "遅番", start: "17:00", color: "#3A63CF", bg: "#E1EAFF", border: "#93AEF0", btn: "linear-gradient(135deg, #7C9CF0, #4A72DE)" },
 };
 function shiftKindOf(inTime) {
   const m = /^(\d{1,2}):(\d{2})$/.exec(inTime || "");
@@ -139,15 +139,19 @@ function ShiftBadge({ kind, big }) {
   return <span style={{ display: "inline-block", background: kind.color, color: "#fff", borderRadius: 3, padding: big ? "0 5px" : "0 3px", fontSize: big ? 11 : 9, fontWeight: 800, lineHeight: big ? "16px" : "13px", marginRight: 3, verticalAlign: "middle" }}>{kind.label}</span>;
 }
 
-// 色の説明(早番・遅番を、右寄せの小さな1つの枠にまとめる。左がオレンジの早番、右が青の遅番)
+// 色の説明(右寄せの1つの枠を、左右に分ける。左「早 出勤 12:00」、右「遅 出勤 17:00」)
 function ShiftLegend() {
   return (
     <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
-      <div style={{ display: "inline-flex", borderRadius: 8, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.18)", color: "#fff", fontSize: 11, lineHeight: 1.3 }}>
-        {[SHIFT_KINDS.early, SHIFT_KINDS.late].map((k) => (
-          <span key={k.name} style={{ background: k.color, padding: "4px 10px", whiteSpace: "nowrap" }}>
-            <b style={{ fontWeight: 800 }}>{k.name}</b> {k.hint}
-          </span>
+      <div style={{ display: "inline-flex", border: "1.5px solid #5C3344", borderRadius: 8, overflow: "hidden" }}>
+        {[SHIFT_KINDS.early, SHIFT_KINDS.late].map((k, i) => (
+          <div key={k.name} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 14px", background: k.bg, color: k.color, borderLeft: i ? "1.5px solid #5C3344" : "none" }}>
+            <span style={{ fontSize: 22, fontWeight: 800, lineHeight: 1 }}>{k.label}</span>
+            <span style={{ display: "flex", flexDirection: "column", lineHeight: 1.2 }}>
+              <span style={{ fontSize: 10, fontWeight: 700 }}>出勤</span>
+              <span style={{ fontSize: 14, fontWeight: 800 }}>{k.start}</span>
+            </span>
+          </div>
         ))}
       </div>
     </div>
