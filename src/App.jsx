@@ -1246,7 +1246,7 @@ function CabShift({ user, shopId }) {
                         return (
                         <div key={c.id} style={{ background: isRoom ? "#DDF0FF" : kind ? kind.bg : `${rankColor(c.rank)}22`, borderRadius: 5, padding: "2px 4px", border: isRoom ? "1px solid #8CC5EE" : kind ? `1px solid ${kind.border}` : `1px solid ${rankColor(c.rank)}44`, marginBottom: 2 }}>
                           <div style={{ fontSize: 10, fontWeight: 700, color: isRoom ? "#2F80C4" : "#5C3344", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{isRoom ? "🏠 " : ""}{c.name}</div>
-                          {getShift(c.id, dateStr).in && <div style={{ fontSize: 9, color: isRoom ? "#5AA9E0" : kind ? kind.color : "#D4789F", fontWeight: kind ? 700 : 400, textAlign: "center" }}>{kind && <ShiftBadge kind={kind} />}{getShift(c.id, dateStr).in}</div>}
+                          {getShift(c.id, dateStr).in && <div style={{ fontSize: 9, color: isRoom ? "#5AA9E0" : kind ? kind.color : "#D4789F", fontWeight: kind ? 700 : 400, textAlign: "center", whiteSpace: "nowrap" }}>{getShift(c.id, dateStr).in}{getShift(c.id, dateStr).out ? ` — ${getShift(c.id, dateStr).out}` : ""}</div>}
                           {getShift(c.id, dateStr).memo && <div style={{ fontSize: 8, color: "#B8860B", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={getShift(c.id, dateStr).memo}>📝{getShift(c.id, dateStr).memo}</div>}
                         </div>
                         );
