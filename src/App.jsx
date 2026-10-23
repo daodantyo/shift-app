@@ -120,6 +120,44 @@ function calcHours(inTime, outTime) {
   return (mins / 60).toFixed(1);
 }
 
+// 早番・遅番(出勤の開始時間で自動で決める)。16:00より前=早番、16:00以降(0:00〜5:59も)=遅番。時間が入っていないときは null
+const EARLY_BEFORE_MIN = 16 * 60;
+const DAY_START_MIN = 6 * 60;
+const SHIFT_KINDS = {
+  early: { label: "早", name: "早番", start: "12:00", color: "#BF5A00", bg: "#FFEBD2", border: "#F4B976", btn: "linear-gradient(135deg, #F5A03C, #D9730D)" },
+  late: { label: "遅", name: "遅番", start: "17:00", color: "#3A63CF", bg: "#E1EAFF", border: "#93AEF0", btn: "linear-gradient(135deg, #7C9CF0, #4A72DE)" },
+};
+function shiftKindOf(inTime) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(inTime || "");
+  if (!m) return null;
+  const min = Number(m[1]) * 60 + Number(m[2]);
+  return min >= DAY_START_MIN && min < EARLY_BEFORE_MIN ? SHIFT_KINDS.early : SHIFT_KINDS.late;
+}
+
+// 「早」「遅」の小さな札(色が見分けにくい人にも分かるように、文字も付ける)
+function ShiftBadge({ kind, big }) {
+  return <span style={{ display: "inline-block", background: kind.color, color: "#fff", borderRadius: 3, padding: big ? "0 5px" : "0 3px", fontSize: big ? 11 : 9, fontWeight: 800, lineHeight: big ? "16px" : "13px", marginRight: 3, verticalAlign: "middle" }}>{kind.label}</span>;
+}
+
+// 色の説明(右寄せの1つの枠を、左右に分ける。左「早 出勤 12:00」、右「遅 出勤 17:00」)
+function ShiftLegend() {
+  return (
+    <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+      <div style={{ display: "inline-flex", border: "1.5px solid #5C3344", borderRadius: 8, overflow: "hidden" }}>
+        {[SHIFT_KINDS.early, SHIFT_KINDS.late].map((k, i) => (
+          <div key={k.name} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 14px", background: k.bg, color: k.color, borderLeft: i ? "1.5px solid #5C3344" : "none" }}>
+            <span style={{ fontSize: 22, fontWeight: 800, lineHeight: 1 }}>{k.label}</span>
+            <span style={{ display: "flex", flexDirection: "column", lineHeight: 1.2 }}>
+              <span style={{ fontSize: 10, fontWeight: 700 }}>出勤</span>
+              <span style={{ fontSize: 14, fontWeight: 800 }}>{k.start}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function formatYen(val) {
   if (!val && val !== 0) return "—";
   return "¥" + Number(val).toLocaleString();
@@ -1100,6 +1138,8 @@ function CabShift({ user, shopId }) {
               {fullFeatures && <button onClick={() => openLineModal(dates)} style={{ background: "linear-gradient(135deg, #06C755, #04A544)", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", boxShadow: "0 2px 8px rgba(6,199,85,0.3)" }}>📩 LINEで送信</button>}
             </div>
 
+            <ShiftLegend />
+
             {/* ===== スマホ用レイアウト:今日(選択日)を大きく表示 ===== */}
             {isMobile && (() => {
               const todayIdx = dates.findIndex((d) => d.toDateString() === new Date().toDateString());
@@ -1145,14 +1185,15 @@ function CabShift({ user, shopId }) {
                       const isOff = s.status === "off";
                       const hours = calcHours(s.in, s.out);
                       const stat = getStat(member.id, selStr);
+                      const kind = isOff ? null : shiftKindOf(s.in);
                       return (
-                        <div key={member.id} style={{ borderRadius: 12, border: isOff ? "1.5px solid #f0f0f0" : `1.5px solid ${rankColor(member.rank)}55`, background: isOff ? "#fafafa" : "#FFF5F8", padding: "8px 10px", marginBottom: 8 }}>
+                        <div key={member.id} style={{ borderRadius: 12, border: isOff ? "1.5px solid #f0f0f0" : kind ? `1.5px solid ${kind.border}` : `1.5px solid ${rankColor(member.rank)}55`, boxShadow: kind ? `inset 6px 0 0 ${kind.color}` : "none", background: isOff ? "#fafafa" : kind ? kind.bg : "#FFF5F8", padding: "8px 10px", marginBottom: 8 }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                             <div style={{ minWidth: 0 }}>
-                              <div style={{ fontWeight: 800, fontSize: isOff ? 13 : 17, color: isOff ? "#bbb" : "#5C3344", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{member.name}</div>
+                              <div style={{ fontWeight: 800, fontSize: isOff ? 13 : 17, color: isOff ? "#bbb" : "#5C3344", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{kind && <ShiftBadge kind={kind} big />}{member.name}</div>
                               <div style={{ fontSize: 10, fontWeight: 700, color: isOff ? "#ccc" : rankColor(member.rank) }}>{member.rank}</div>
                             </div>
-                            <button onClick={() => updateShift(member.id, selStr, { status: isOff ? "work" : "off" })} style={{ border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer", background: isOff ? "#f0f0f0" : "linear-gradient(135deg, #FF8FAB, #FF6B9D)", color: isOff ? "#bbb" : "#fff", flexShrink: 0 }}>{isOff ? "休み" : "出勤"}</button>
+                            <button onClick={() => updateShift(member.id, selStr, { status: isOff ? "work" : "off" })} style={{ border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 800, cursor: "pointer", background: isOff ? "#f0f0f0" : kind ? kind.btn : "linear-gradient(135deg, #FF8FAB, #FF6B9D)", color: isOff ? "#bbb" : "#fff", flexShrink: 0 }}>{isOff ? "休み" : "出勤"}</button>
                           </div>
                           {!isOff && (
                             <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
@@ -1201,10 +1242,11 @@ function CabShift({ user, shopId }) {
                     {workingCast.length === 0 ? <div style={{ textAlign: "center", fontSize: 9, color: "#FFB6D5" }}>なし</div>
                       : workingCast.map((c) => {
                         const isRoom = c.name.includes("部屋空き") || (c.name.includes("部屋") && c.name.includes("空"));
+                        const kind = isRoom ? null : shiftKindOf(getShift(c.id, dateStr).in);
                         return (
-                        <div key={c.id} style={{ background: isRoom ? "#DDF0FF" : `${rankColor(c.rank)}22`, borderRadius: 5, padding: "2px 4px", border: isRoom ? "1px solid #8CC5EE" : `1px solid ${rankColor(c.rank)}44`, marginBottom: 2 }}>
+                        <div key={c.id} style={{ background: isRoom ? "#DDF0FF" : kind ? kind.bg : `${rankColor(c.rank)}22`, borderRadius: 5, padding: "2px 4px", border: isRoom ? "1px solid #8CC5EE" : kind ? `1px solid ${kind.border}` : `1px solid ${rankColor(c.rank)}44`, marginBottom: 2 }}>
                           <div style={{ fontSize: 10, fontWeight: 700, color: isRoom ? "#2F80C4" : "#5C3344", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{isRoom ? "🏠 " : ""}{c.name}</div>
-                          {getShift(c.id, dateStr).in && <div style={{ fontSize: 9, color: isRoom ? "#5AA9E0" : "#D4789F", textAlign: "center" }}>{getShift(c.id, dateStr).in}</div>}
+                          {getShift(c.id, dateStr).in && <div style={{ fontSize: 9, color: isRoom ? "#5AA9E0" : kind ? kind.color : "#D4789F", fontWeight: kind ? 700 : 400, textAlign: "center", whiteSpace: "nowrap" }}>{getShift(c.id, dateStr).in}{getShift(c.id, dateStr).out ? ` — ${getShift(c.id, dateStr).out}` : ""}</div>}
                           {getShift(c.id, dateStr).memo && <div style={{ fontSize: 8, color: "#B8860B", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={getShift(c.id, dateStr).memo}>📝{getShift(c.id, dateStr).memo}</div>}
                         </div>
                         );
@@ -1251,16 +1293,17 @@ function CabShift({ user, shopId }) {
                       const isOff = s.status === "off";
                       const hours = calcHours(s.in, s.out);
                       const stat = getStat(member.id, dateStr);
+                      const kind = isOff || isRoom ? null : shiftKindOf(s.in);
                       return (
-                        <div key={di} style={{ padding: "5px 3px", borderLeft: "1px solid #FFD9E8", background: isOff ? "transparent" : "#FFF5F8" }}>
-                          <button onClick={() => updateShift(member.id, dateStr, { status: isOff ? "work" : "off" })} style={{ width: "100%", border: "none", borderRadius: 6, padding: "3px 0", fontSize: 11, fontWeight: 700, cursor: "pointer", background: isOff ? "#f0f0f0" : "linear-gradient(135deg, #FF8FAB, #FF6B9D)", color: isOff ? "#bbb" : "#fff", marginBottom: 3 }}>
+                        <div key={di} style={{ padding: "5px 3px", borderLeft: "1px solid #FFD9E8", background: isOff ? "transparent" : kind ? kind.bg : "#FFF5F8" }}>
+                          <button onClick={() => updateShift(member.id, dateStr, { status: isOff ? "work" : "off" })} style={{ width: "100%", border: "none", borderRadius: 6, padding: "3px 0", fontSize: 11, fontWeight: 700, cursor: "pointer", background: isOff ? "#f0f0f0" : kind ? kind.btn : "linear-gradient(135deg, #FF8FAB, #FF6B9D)", color: isOff ? "#bbb" : "#fff", marginBottom: 3 }}>
                             {isOff ? "休み" : "出勤"}
                           </button>
                           {!isOff && (
                             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                               <TimeSelect value={s.in || ""} onChange={(v) => updateShift(member.id, dateStr, { in: v })} style={{ width: "100%" }} />
                               <TimeSelect value={s.out || ""} onChange={(v) => updateShift(member.id, dateStr, { out: v })} style={{ width: "100%" }} />
-                              {hours && <div style={{ textAlign: "center", fontSize: 9, color: "#D4789F" }}>{hours}h</div>}
+                              {(hours || kind) && <div style={{ textAlign: "center", fontSize: 9, color: kind ? kind.color : "#D4789F", fontWeight: kind ? 700 : 400 }}>{kind && <ShiftBadge kind={kind} />}{hours && `${hours}h`}</div>}
                               <button onClick={() => openDetail(member.id, dateStr)} style={{ background: "rgba(255,199,60,0.15)", border: "1px solid rgba(255,199,60,0.3)", borderRadius: 5, padding: "2px 0", fontSize: 9, color: "#FFC93C", cursor: "pointer", fontWeight: 700 }}>
                                 本{stat.douhan} 姫{stat.shimei}
                               </button>
@@ -1307,6 +1350,7 @@ function CabShift({ user, shopId }) {
                   <button onClick={() => exportShiftCSV(monthDates, `${summaryYear}-${String(summaryMonth + 1).padStart(2, "0")}`)} style={{ background: "linear-gradient(135deg, #7ED9A7, #4CBF87)", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", boxShadow: "0 2px 8px rgba(76,191,135,0.3)" }}>📥 この月をCSV書き出し</button>
                   {fullFeatures && <button onClick={() => openLineModal(monthDates, `${summaryMonth + 1}月`)} style={{ background: "linear-gradient(135deg, #06C755, #04A544)", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#fff", boxShadow: "0 2px 8px rgba(6,199,85,0.3)" }}>📩 この月をLINEで送信</button>}
                 </div>
+                <ShiftLegend />
                 {monthDates.map((d, i) => {
                   const dateStr = d.toDateString();
                   const isToday = d.toDateString() === new Date().toDateString();
@@ -1325,10 +1369,11 @@ function CabShift({ user, shopId }) {
                           const s = getShift(member.id, dateStr);
                           const isOff = s.status === "off";
                           const hours = calcHours(s.in, s.out);
+                          const kind = isOff ? null : shiftKindOf(s.in);
                           return (
-                            <div key={member.id} style={{ display: "flex", alignItems: "center", gap: 8, background: isOff ? "transparent" : "#FFF5F8", borderRadius: 8, padding: "4px 8px" }}>
+                            <div key={member.id} style={{ display: "flex", alignItems: "center", gap: 8, background: isOff ? "transparent" : kind ? kind.bg : "#FFF5F8", borderRadius: 8, padding: "4px 8px" }}>
                               <div style={{ width: 64, fontSize: 12, fontWeight: 700, color: "#5C3344", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{member.name}</div>
-                              <button onClick={() => updateShift(member.id, dateStr, { status: isOff ? "work" : "off" })} style={{ border: "none", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", background: isOff ? "#f0f0f0" : "linear-gradient(135deg, #FF8FAB, #FF6B9D)", color: isOff ? "#bbb" : "#fff" }}>
+                              <button onClick={() => updateShift(member.id, dateStr, { status: isOff ? "work" : "off" })} style={{ border: "none", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", background: isOff ? "#f0f0f0" : kind ? kind.btn : "linear-gradient(135deg, #FF8FAB, #FF6B9D)", color: isOff ? "#bbb" : "#fff" }}>
                                 {isOff ? "休み" : "出勤"}
                               </button>
                               {!isOff && (
@@ -1337,6 +1382,7 @@ function CabShift({ user, shopId }) {
                                   <span style={{ fontSize: 11, color: "#D4789F" }}>〜</span>
                                   <TimeSelect value={s.out || ""} onChange={(v) => updateShift(member.id, dateStr, { out: v })} style={{ width: 84 }} />
                                   {hours && <span style={{ fontSize: 10, color: "#D4789F" }}>{hours}h</span>}
+                                  {kind && <ShiftBadge kind={kind} />}
                                 </>
                               )}
                             </div>
