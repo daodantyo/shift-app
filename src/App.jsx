@@ -1227,6 +1227,22 @@ function CabShift({ user, shopId }) {
                 const isWeekend = i >= 5;
                 const workingCast = cast.filter((c) => getShift(c.id, dateStr).status !== "off")
                   .sort((a, b) => (getShift(a.id, dateStr).in || "99:99").localeCompare(getShift(b.id, dateStr).in || "99:99"));
+                const roomOf = (c) => c.name.includes("部屋空き") || (c.name.includes("部屋") && c.name.includes("空"));
+                const kindOf = (c) => (roomOf(c) ? null : shiftKindOf(getShift(c.id, dateStr).in));
+                // 早番・遅番の2つにまとめる(部屋空きと、時間が入っていない人は、そのあとに並べる)
+                const groups = [SHIFT_KINDS.early, SHIFT_KINDS.late].map((kind) => ({ kind, list: workingCast.filter((c) => kindOf(c) === kind) }));
+                const others = workingCast.filter((c) => !kindOf(c));
+                const castChip = (c, kind) => {
+                  const isRoom = roomOf(c);
+                  const s = getShift(c.id, dateStr);
+                  return (
+                    <div key={c.id} style={{ background: isRoom ? "#DDF0FF" : kind ? "#fff" : `${rankColor(c.rank)}22`, borderRadius: 5, padding: "2px 4px", border: isRoom ? "1px solid #8CC5EE" : `1px solid ${rankColor(c.rank)}44`, marginBottom: 2 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: isRoom ? "#2F80C4" : "#5C3344", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{isRoom ? "🏠 " : ""}{c.name}</div>
+                      {s.in && <div style={{ fontSize: 9, color: isRoom ? "#5AA9E0" : kind ? kind.color : "#D4789F", fontWeight: kind ? 700 : 400, textAlign: "center" }}>{s.in}</div>}
+                      {s.memo && <div style={{ fontSize: 8, color: "#B8860B", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={s.memo}>📝{s.memo}</div>}
+                    </div>
+                  );
+                };
                 return (
                   <div key={i} style={{ background: isToday ? "linear-gradient(135deg, #FFF3D0, #FFE9A8)" : "#fff", borderRadius: 10, padding: "8px 6px", border: isToday ? "2.5px solid #FFC93C" : "1.5px solid #FFD9E8", minHeight: 80, boxShadow: isToday ? "0 3px 10px rgba(255,201,60,0.4)" : "none" }}>
                     <div style={{ textAlign: "center", marginBottom: 6 }}>
@@ -1235,18 +1251,15 @@ function CabShift({ user, shopId }) {
                       <div style={{ fontSize: 12, fontWeight: 800, color: isToday ? "#E0930A" : isWeekend ? "#FF4D8D" : "#5C3344" }}>{formatDate(d)}</div>
                       <div style={{ fontSize: 10, color: "#D4789F" }}>{workingCast.length}名</div>
                     </div>
-                    {workingCast.length === 0 ? <div style={{ textAlign: "center", fontSize: 9, color: "#FFB6D5" }}>なし</div>
-                      : workingCast.map((c) => {
-                        const isRoom = c.name.includes("部屋空き") || (c.name.includes("部屋") && c.name.includes("空"));
-                        const kind = isRoom ? null : shiftKindOf(getShift(c.id, dateStr).in);
-                        return (
-                        <div key={c.id} style={{ background: isRoom ? "#DDF0FF" : kind ? kind.bg : `${rankColor(c.rank)}22`, borderRadius: 5, padding: "2px 4px", border: isRoom ? "1px solid #8CC5EE" : kind ? `1px solid ${kind.border}` : `1px solid ${rankColor(c.rank)}44`, marginBottom: 2 }}>
-                          <div style={{ fontSize: 10, fontWeight: 700, color: isRoom ? "#2F80C4" : "#5C3344", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{isRoom ? "🏠 " : ""}{c.name}</div>
-                          {getShift(c.id, dateStr).in && <div style={{ fontSize: 9, color: isRoom ? "#5AA9E0" : kind ? kind.color : "#D4789F", fontWeight: kind ? 700 : 400, textAlign: "center" }}>{kind && <ShiftBadge kind={kind} />}{getShift(c.id, dateStr).in}</div>}
-                          {getShift(c.id, dateStr).memo && <div style={{ fontSize: 8, color: "#B8860B", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={getShift(c.id, dateStr).memo}>📝{getShift(c.id, dateStr).memo}</div>}
+                    {workingCast.length === 0 ? <div style={{ textAlign: "center", fontSize: 9, color: "#FFB6D5" }}>なし</div> : (<>
+                      {groups.filter((g) => g.list.length > 0).map((g) => (
+                        <div key={g.kind.name} style={{ background: g.kind.bg, border: `1.5px solid ${g.kind.border}`, borderRadius: 7, padding: "3px 3px 1px", marginBottom: 4 }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, background: g.kind.color, color: "#fff", borderRadius: 4, fontSize: 10, fontWeight: 800, padding: "1px 0", marginBottom: 3 }}>{g.kind.name}<span style={{ fontSize: 9, fontWeight: 600 }}>{g.list.length}名</span></div>
+                          {g.list.map((c) => castChip(c, g.kind))}
                         </div>
-                        );
-                      })}
+                      ))}
+                      {others.map((c) => castChip(c, null))}
+                    </>)}
                   </div>
                 );
               })}
