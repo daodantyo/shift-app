@@ -134,6 +134,18 @@ function shiftKindOf(inTime) {
   return min >= DAY_START_MIN && min < EARLY_BEFORE_MIN ? SHIFT_KINDS.early : SHIFT_KINDS.late;
 }
 
+// その日の出勤の状態。表(上のカード)とLINEの文面は、同じこの決まりを使う
+//   "off": 休み(入力なしも含む) / "ok": 出勤で、出勤と退勤の時間がそろっている / "partial": 出勤だが、どちらかの時間が空
+function shiftDayState(s) {
+  if (!s || s.status === "off") return "off";
+  return s.in && s.out ? "ok" : "partial";
+}
+// "partial" の理由(画面の警告に出す)
+function missingTimeText(s) {
+  if (!s.in && !s.out) return "出勤・退勤の時間が空です";
+  return s.in ? "退勤の時間が空です" : "出勤の時間が空です";
+}
+
 // 「早」「遅」の小さな札(色が見分けにくい人にも分かるように、文字も付ける)
 function ShiftBadge({ kind, big }) {
   return <span style={{ display: "inline-block", background: kind.color, color: "#fff", borderRadius: 3, padding: big ? "0 5px" : "0 3px", fontSize: big ? 11 : 9, fontWeight: 800, lineHeight: big ? "16px" : "13px", marginRight: 3, verticalAlign: "middle" }}>{kind.label}</span>;
@@ -829,12 +841,13 @@ function CabShift({ user, shopId }) {
     }
     lines.push("");
     days.forEach((d) => {
-      if (d.working) lines.push(`${d.date}(${d.weekday}) ${d.in}〜${d.out}`);
+      if (d.state === "ok") lines.push(`${d.date}(${d.weekday}) ${d.in}〜${d.out}`);
+      else if (d.state === "partial") lines.push(`${d.date}(${d.weekday}) 出勤（時間は、あとでお知らせします）`);
       else lines.push(`${d.date}(${d.weekday}) 休み`);
     });
     // 1か月ぶんなど日数が多いときは、出勤日数のまとめも入れる
     if (days.length > 14) {
-      const workDays = days.filter((d) => d.working).length;
+      const workDays = days.filter((d) => d.state !== "off").length;
       lines.push("");
       lines.push(`出勤 ${workDays}日 / 全${days.length}日`);
     }
@@ -880,13 +893,14 @@ function CabShift({ user, shopId }) {
     const rows = cast.map((c) => {
       const days = dateList.map((d) => {
         const s = getShiftLatest(c.id, d.toDateString());
-        const working = s.status !== "off" && s.in && s.out;
+        const state = shiftDayState(s);
         return {
           date: `${d.getMonth() + 1}/${d.getDate()}`,
           weekday: WD[d.getDay()],
-          working,
-          in: working ? s.in : "",
-          out: working ? s.out : "",
+          state,
+          in: state === "ok" ? s.in : "",
+          out: state === "ok" ? s.out : "",
+          problem: state === "partial" ? missingTimeText(s) : "", // 時間が足りない日の理由(送る画面の警告に出す)
         };
       });
       const link = castLine[String(c.id)];
@@ -926,6 +940,9 @@ function CabShift({ user, shopId }) {
     });
   };
 
+  // 1人ぶんの、実際に送る文面(送る前の「文面を見る」と、実際の送信で、同じものを使う)
+  const lineTextFor = (r) => (lineModal && lineModal.mode === "lottery" ? buildLotteryMessage() : buildLineMessage(r.castName, r.days, (lineModal && lineModal.periodLabel) || "来週"));
+
   // 実際にLINE送信する(送信窓口 /api/send-line にお願いする)
   const doSendLine = async () => {
     if (!lineModal) return;
@@ -934,12 +951,14 @@ function CabShift({ user, shopId }) {
       alert("送る相手が選ばれていません。");
       return;
     }
-    if (!window.confirm(`${targets.length}人にLINEを送ります。よろしいですか?`)) return;
+    const partialCount = targets.filter((r) => r.days.some((d) => d.state === "partial")).length;
+    const warn = partialCount > 0 ? `\n\n⚠ 時間が足りない日がある人が、${partialCount}人います。その日は「出勤（時間は、あとでお知らせします）」と送られます。` : "";
+    if (!window.confirm(`${targets.length}人にLINEを送ります。よろしいですか?${warn}`)) return;
     setLineSending(true);
     try {
       const messages = targets.map((r) => ({
         to: r.lineUserId,
-        text: lineModal.mode === "lottery" ? buildLotteryMessage() : buildLineMessage(r.castName, r.days, lineModal.periodLabel || "来週"),
+        text: lineTextFor(r),
       }));
       const res = await fetch("/api/send-line", {
         method: "POST",
@@ -1247,6 +1266,7 @@ function CabShift({ user, shopId }) {
                         <div key={c.id} style={{ background: isRoom ? "#DDF0FF" : kind ? kind.bg : `${rankColor(c.rank)}22`, borderRadius: 5, padding: "2px 4px", border: isRoom ? "1px solid #8CC5EE" : kind ? `1px solid ${kind.border}` : `1px solid ${rankColor(c.rank)}44`, marginBottom: 2 }}>
                           <div style={{ fontSize: 10, fontWeight: 700, color: isRoom ? "#2F80C4" : "#5C3344", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{isRoom ? "🏠 " : ""}{c.name}</div>
                           {getShift(c.id, dateStr).in && <div style={{ fontSize: 9, color: isRoom ? "#5AA9E0" : kind ? kind.color : "#D4789F", fontWeight: kind ? 700 : 400, textAlign: "center", whiteSpace: "nowrap" }}>{getShift(c.id, dateStr).in}{getShift(c.id, dateStr).out ? ` — ${getShift(c.id, dateStr).out}` : ""}</div>}
+                      {!isRoom && shiftDayState(getShift(c.id, dateStr)) === "partial" && <div style={{ fontSize: 9, fontWeight: 800, color: "#D32F2F", textAlign: "center", lineHeight: 1.25 }} title="LINEには「時間は、あとでお知らせします」と送られます">⚠ 時間が足りません</div>}
                           {getShift(c.id, dateStr).memo && <div style={{ fontSize: 8, color: "#B8860B", textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={getShift(c.id, dateStr).memo}>📝{getShift(c.id, dateStr).memo}</div>}
                         </div>
                         );
@@ -2354,11 +2374,18 @@ function CabShift({ user, shopId }) {
         const registered = rows.filter((r) => r.registered);
         const notRegistered = rows.filter((r) => !r.registered);
         const checkedCount = rows.filter((r) => r.checked && r.registered).length;
+        const problemRows = rows.filter((r) => r.registered && r.days.some((d) => d.state === "partial"));
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }} onClick={() => !lineSending && setLineModal(null)}>
             <div style={{ background: "#fff", borderRadius: 20, padding: 24, width: 360, maxWidth: "92vw", maxHeight: "85vh", overflowY: "auto", border: "2px solid #06C755" }} onClick={(e) => e.stopPropagation()}>
               <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 4, color: "#04A544" }}>{lineModal.mode === "lottery" ? "🎰 抽選＆空き状況を送信" : "📩 LINEで送信"}</div>
               <div style={{ fontSize: 12, color: "#888", marginBottom: 14 }}>{lineModal.mode === "lottery" ? "送る人にチェックを入れてください。抽選リンクと空き状況が届きます。" : `送る人にチェックを入れてください。${lineModal.periodLabel || "来週"}のシフト(${lineModal.dateList.length}日ぶん)が届きます。`}</div>
+
+              {problemRows.length > 0 && (
+                <div style={{ background: "#FFEBEE", border: "1px solid #F4B6BE", borderRadius: 10, padding: "9px 12px", marginBottom: 12, fontSize: 12, color: "#B71C1C", fontWeight: 700, lineHeight: 1.6 }}>
+                  ⚠ 時間が足りない日がある人が、{problemRows.length}人います（下の赤い字）。表で時間を入れてから送ると、LINEに時間が出ます。このまま送ると、その日は「出勤（時間は、あとでお知らせします）」と送られます。
+                </div>
+              )}
 
               <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
                 <button onClick={() => setLineModal((m) => ({ ...m, rows: m.rows.map((r) => r.registered ? { ...r, checked: true } : r) }))} style={{ flex: 1, fontSize: 12, padding: "6px 0", borderRadius: 8, border: "1px solid #06C755", background: "#fff", color: "#04A544", cursor: "pointer", fontWeight: 700 }}>全員チェック</button>
@@ -2366,12 +2393,26 @@ function CabShift({ user, shopId }) {
               </div>
 
               <div style={{ marginBottom: 12 }}>
-                {registered.map((r) => (
-                  <label key={r.castId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 6px", borderBottom: "1px solid #F3F3F3", cursor: "pointer" }}>
-                    <input type="checkbox" checked={r.checked} onChange={() => toggleLineTarget(r.castId)} style={{ width: 18, height: 18 }} />
-                    <span style={{ fontWeight: 600 }}>{r.castName}さん</span>
-                  </label>
-                ))}
+                {registered.map((r) => {
+                  const open = lineModal.previewId === r.castId;
+                  return (
+                    <div key={r.castId} style={{ padding: "8px 6px", borderBottom: "1px solid #F3F3F3" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <label style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                          <input type="checkbox" checked={r.checked} onChange={() => toggleLineTarget(r.castId)} style={{ width: 18, height: 18 }} />
+                          <span style={{ fontWeight: 600 }}>{r.castName}さん</span>
+                        </label>
+                        <button type="button" onClick={() => setLineModal((m) => ({ ...m, previewId: m.previewId === r.castId ? null : r.castId }))} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 8, border: "1px solid #06C755", background: open ? "#E8F8EE" : "#fff", color: "#04A544", cursor: "pointer", fontWeight: 700 }}>{open ? "閉じる" : "文面を見る"}</button>
+                      </div>
+                      {r.days.filter((d) => d.state === "partial").map((d) => (
+                        <div key={d.date} style={{ marginLeft: 28, fontSize: 11, color: "#D32F2F", fontWeight: 700 }}>⚠ {d.date}({d.weekday}) {d.problem}</div>
+                      ))}
+                      {open && (
+                        <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", fontFamily: "inherit", fontSize: 12, lineHeight: 1.55, background: "#F6FBF7", border: "1px solid #CDE9D3", borderRadius: 8, padding: 10, margin: "8px 0 0", maxHeight: 240, overflowY: "auto" }}>{lineTextFor(r)}</pre>
+                      )}
+                    </div>
+                  );
+                })}
                 {registered.length === 0 && (
                   <div style={{ fontSize: 13, color: "#999", padding: "10px 0" }}>送れる人がまだいません。キャストさんに希望シフトを一度提出してもらってください。</div>
                 )}
