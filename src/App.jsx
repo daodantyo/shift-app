@@ -8,6 +8,7 @@ import StaffView from "./StaffView";
 import ShopSettings from "./ShopSettings";
 import { AuthScreen, VerifyScreen } from "./Auth";
 import { useShopId, DEFAULT_LIFF_ID } from "./shop";
+import MemoPad from "./MemoPad";
 
 const DAYS = ["月", "火", "水", "木", "金", "土", "日"];
 const INITIAL_CAST = [
@@ -1043,6 +1044,7 @@ function CabShift({ user, shopId }) {
       </div>
 
       <div style={{ padding: "20px 16px", maxWidth: 1000, margin: "0 auto" }}>
+        <MemoPad path={`${shopBase}/memo`} />
         {/* 以前のデータの引き継ぎ案内 */}
         {legacyAvailable && (
           <div style={{ background: "#FFF7E0", border: "2px solid #FFD666", borderRadius: 12, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
