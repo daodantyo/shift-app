@@ -10,6 +10,7 @@ import { AuthScreen, VerifyScreen } from "./Auth";
 import { useShopId, DEFAULT_LIFF_ID } from "./shop";
 import MemoPad from "./MemoPad";
 import { addMemoPlans } from "./memo";
+import { gcalUrl } from "./gcal";
 
 const DAYS = ["月", "火", "水", "木", "金", "土", "日"];
 const INITIAL_CAST = [
@@ -2343,11 +2344,16 @@ function CabShift({ user, shopId }) {
                 {plans.length === 0 && <div style={{ fontSize: 13, color: "#999", padding: "8px 0" }}>まだ予定はありません</div>}
                 {plans.map(([id, p]) => {
                   const t = PLAN_TYPES[p.type] || PLAN_TYPES.memo;
+                  const gUrl = gcalUrl(dateStr, p.text, `${t.label}(キャスト管理の予定表から)`);
                   return (
-                    <div key={id} style={{ display: "flex", alignItems: "center", gap: 8, background: t.bg, borderRadius: 8, padding: "8px 10px", marginBottom: 6 }}>
-                      <span style={{ fontSize: 14 }}>{t.emoji}</span>
-                      <span style={{ flex: 1, fontSize: 13, color: t.color, fontWeight: 600 }}>{p.text}</span>
-                      <button onClick={() => removePlan(dateStr, id)} style={{ background: "none", border: "none", color: "#FF6B6B", cursor: "pointer", fontSize: 16, fontWeight: 700 }}>×</button>
+                    <div key={id} style={{ background: t.bg, borderRadius: 8, padding: "8px 10px", marginBottom: 6 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 14 }}>{t.emoji}</span>
+                        <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: t.color, fontWeight: 600, wordBreak: "break-word" }}>{p.text}</span>
+                        <button onClick={() => removePlan(dateStr, id)} style={{ background: "none", border: "none", color: "#FF6B6B", cursor: "pointer", fontSize: 16, fontWeight: 700 }}>×</button>
+                      </div>
+                      {/* Google カレンダーの「予定を追加」の画面を開く(開くだけ。「保存」は、Google カレンダーで押す) */}
+                      {gUrl && <a href={gUrl} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 6, background: "#fff", border: "1.5px solid #4285F4", color: "#1a56c4", borderRadius: 999, padding: "6px 12px", fontSize: 12, fontWeight: 800, textDecoration: "none", lineHeight: "18px" }}>📅 Googleカレンダーに入れる</a>}
                     </div>
                   );
                 })}
