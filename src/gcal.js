@@ -56,40 +56,116 @@ export function icsFold(line) {
 const pad2 = (n) => String(n).padStart(2, "0");
 const stamp = (d) => `${d.getUTCFullYear()}${pad2(d.getUTCMonth() + 1)}${pad2(d.getUTCDate())}T${pad2(d.getUTCHours())}${pad2(d.getUTCMinutes())}${pad2(d.getUTCSeconds())}Z`;
 
-// year, month(0-11): 取り込む月 / schedule: { 日付の文字(toDateString): { 予定のID: { type, text } } }
-// labelOf(type): 予定の種類の名前(補足に入れる) / now: 作った時刻(試験で固定するため)
-// 返すもの: { text: ファイルの中身, count: 入れた予定の数 }
-export function monthIcs(year, month, schedule, labelOf = () => "", now = new Date()) {
+// 見ている月の予定を、1件ずつの一覧にする(.ics にも、Google カレンダーに直接入れるときにも、同じ一覧を使う)
+// year, month(0-11) / schedule: { 日付の文字(toDateString): { 予定のID: { type, text } } } / labelOf(type): 予定の種類の名前
+// 返すもの: [{ id: 予定のID, ymd: "20261120", nextYmd: "20261121", title, note }]
+export function monthPlans(year, month, schedule, labelOf = () => "") {
   const days = new Date(year, month + 1, 0).getDate();
-  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//shift-app//schedule//JA", "CALSCALE:GREGORIAN", "METHOD:PUBLISH"];
-  let count = 0;
+  const out = [];
   for (let d = 1; d <= days; d++) {
     const date = new Date(year, month, d);
     const day = (schedule && schedule[date.toDateString()]) || {};
-    const next = new Date(year, month, d + 1);
-    const ymd = (x) => `${x.getFullYear()}${pad2(x.getMonth() + 1)}${pad2(x.getDate())}`;
+    const next = new Date(year, month, d + 1); // 終日の予定は、終わりを「翌日」で書く決まり
     for (const id of Object.keys(day).sort()) {
       const p = day[id];
       const title = String((p && p.text) || "").trim();
       if (!title) continue;
       const note = labelOf(p.type);
-      lines.push(
-        "BEGIN:VEVENT",
-        `UID:${icsText(id)}-${ymd(date)}@shift-app`,
-        `DTSTAMP:${stamp(now)}`,
-        `DTSTART;VALUE=DATE:${ymd(date)}`,
-        `DTEND;VALUE=DATE:${ymd(next)}`, // 終日の予定は、終わりを「翌日」で書く決まり
-        `SUMMARY:${icsText(title)}`,
-      );
-      if (note) lines.push(`DESCRIPTION:${icsText(`${note}(キャスト管理の予定表から)`)}`);
-      lines.push("TRANSP:TRANSPARENT", "END:VEVENT");
-      count++;
+      out.push({ id, ymd: ymd(date), nextYmd: ymd(next), title, note: note ? `${note}(キャスト管理の予定表から)` : "" });
     }
   }
+  return out;
+}
+
+// 返すもの: { text: ファイルの中身, count: 入れた予定の数 }  now: 作った時刻(試験で固定するため)
+export function monthIcs(year, month, schedule, labelOf = () => "", now = new Date()) {
+  const plans = monthPlans(year, month, schedule, labelOf);
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//shift-app//schedule//JA", "CALSCALE:GREGORIAN", "METHOD:PUBLISH"];
+  for (const p of plans) {
+    lines.push(
+      "BEGIN:VEVENT",
+      `UID:${icsText(p.id)}-${p.ymd}@shift-app`,
+      `DTSTAMP:${stamp(now)}`,
+      `DTSTART;VALUE=DATE:${p.ymd}`,
+      `DTEND;VALUE=DATE:${p.nextYmd}`,
+      `SUMMARY:${icsText(p.title)}`,
+    );
+    if (p.note) lines.push(`DESCRIPTION:${icsText(p.note)}`);
+    lines.push("TRANSP:TRANSPARENT", "END:VEVENT");
+  }
   lines.push("END:VCALENDAR");
-  return { text: lines.map(icsFold).join("\r\n") + "\r\n", count };
+  return { text: lines.map(icsFold).join("\r\n") + "\r\n", count: plans.length };
 }
 
 export function icsFileName(year, month) {
   return `予定表_${year}-${pad2(month + 1)}.ics`;
+}
+
+// ---- Google カレンダーに、そのまま入れる(Google の許可を使う。ログインや許可の画面は gcal-google.js) ----
+// 予定ごとに決まった ID を付けるので、直してもう一度入れると、同じ予定が上書きされる(2つに増えない)。
+export const GCAL_API = "https://www.googleapis.com/calendar/v3/calendars/primary";
+
+// Google の予定の ID は、a-v と 0-9 だけ・5〜1024文字、という決まり。同じ予定は、いつも同じ ID
+export function gcalEventId(planId, ymdStr) {
+  const hex = Array.from(`${planId}-${ymdStr}`).map((ch) => ch.codePointAt(0).toString(16).padStart(2, "0")).join("");
+  return `shiftapp${hex}`;
+}
+
+const dashed = (y) => `${y.slice(0, 4)}-${y.slice(4, 6)}-${y.slice(6, 8)}`;
+
+export function gcalEventBody(p) {
+  return {
+    id: gcalEventId(p.id, p.ymd),
+    summary: cut(p.title, GCAL_TITLE_MAX),
+    description: cut(p.note, GCAL_DETAIL_MAX),
+    start: { date: dashed(p.ymd) },
+    end: { date: dashed(p.nextYmd) },
+    transparency: "transparent", // 「空き」のまま(終日の予定で、ほかの予定を邪魔しない)
+  };
+}
+
+async function failure(res, p) {
+  let reason = "";
+  let detail = "";
+  try {
+    const j = await res.json();
+    detail = (j && j.error && j.error.message) || "";
+    reason = (j && j.error && j.error.errors && j.error.errors[0] && j.error.errors[0].reason) || "";
+  } catch (e) { /* 返事が読めなくても、番号だけ伝える */ }
+  return { title: p.title, status: res.status, reason, detail };
+}
+
+// plans: monthPlans の一覧 / token: Google の許可でもらった鍵 / fetchFn: 試験で差し替える
+// 返すもの: { created, updated, failed: [{ title, status, reason, detail }], skipped }
+export async function pushPlansToGoogle(plans, token, fetchFn, onProgress = () => {}) {
+  const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  const out = { created: 0, updated: 0, failed: [], skipped: 0 };
+  let n = 0;
+  for (const p of plans) {
+    const body = gcalEventBody(p);
+    try {
+      let res = await fetchFn(`${GCAL_API}/events`, { method: "POST", headers, body: JSON.stringify(body) });
+      if (res.status === 409) {
+        // すでに同じ ID の予定がある(前に入れた予定、または、Google で消した予定) → 上書きして、生きている予定にする
+        res = await fetchFn(`${GCAL_API}/events/${body.id}`, { method: "PUT", headers, body: JSON.stringify({ ...body, status: "confirmed" }) });
+        if (res.ok) out.updated++;
+        else out.failed.push(await failure(res, p));
+      } else if (res.ok) {
+        out.created++;
+      } else {
+        out.failed.push(await failure(res, p));
+      }
+    } catch (e) {
+      out.failed.push({ title: p.title, status: 0, reason: "network", detail: "" });
+    }
+    const last = out.failed[out.failed.length - 1];
+    n++;
+    onProgress(n, plans.length);
+    // 許可がない・APIがオフ、のときは、残りも全部だめなので、止める
+    if (last && (last.status === 401 || (last.status === 403 && last.reason !== "rateLimitExceeded" && last.reason !== "userRateLimitExceeded"))) {
+      out.skipped = plans.length - n;
+      break;
+    }
+  }
+  return out;
 }
