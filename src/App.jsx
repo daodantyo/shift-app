@@ -10,7 +10,9 @@ import { AuthScreen, VerifyScreen } from "./Auth";
 import { useShopId, DEFAULT_LIFF_ID } from "./shop";
 import MemoPad from "./MemoPad";
 import { addMemoPlans } from "./memo";
-import { gcalUrl, monthIcs, icsFileName } from "./gcal";
+import { gcalUrl, monthIcs, icsFileName, monthPlans, pushPlansToGoogle } from "./gcal";
+import { GOOGLE_CLIENT_ID } from "./gcal-config";
+import { preloadGsi, requestGoogleToken, primaryCalendarName, googleErrorText } from "./gcal-google";
 
 const DAYS = ["月", "火", "水", "木", "金", "土", "日"];
 const INITIAL_CAST = [
@@ -248,6 +250,8 @@ function CabShift({ user, shopId }) {
   const [scheduleMonth, setScheduleMonth] = useState(new Date().getMonth());
   const [scheduleYear, setScheduleYear] = useState(new Date().getFullYear());
   const [scheduleDayModal, setScheduleDayModal] = useState(null); // 予定を追加する日
+  const [gcalBusy, setGcalBusy] = useState(false); // Google カレンダーに入れている最中
+  const [gcalNote, setGcalNote] = useState(null); // { ok, text } ボタンの下に出す結果
   const [newPlanType, setNewPlanType] = useState("shop");
   const [newPlanText, setNewPlanText] = useState("");
   const [requests, setRequests] = useState({});
@@ -508,9 +512,44 @@ function CabShift({ user, shopId }) {
     cast: { label: "キャストの予定", emoji: "👤", color: "#9B6DE0", bg: "#F3EDFC" },
     memo: { label: "やること・メモ", emoji: "📝", color: "#E0A800", bg: "#FFF9E5" },
   };
-  // 見ている月の予定を、Google カレンダーに取り込めるファイル(.ics)にして保存する(予定表の中身は、自分の端末に保存するだけ)
+  const planLabel = (k) => (PLAN_TYPES[k] || PLAN_TYPES.memo).label;
+  // Google カレンダーの画面で、許可(ログインと書き込みの確認)をもらって、見ている月の予定を、そのまま入れる。
+  // 予定ごとに決まった ID を付けるので、直してもう一度押すと、同じ予定が上書きされる。画面(ブラウザ)だけで動き、予定表を、サーバーには送らない。
+  const putMonthToGoogle = async () => {
+    if (gcalBusy) return;
+    const plans = monthPlans(scheduleYear, scheduleMonth, schedule, planLabel);
+    if (plans.length === 0) { setGcalNote({ ok: false, text: `${scheduleYear}年${scheduleMonth + 1}月は、予定がありません。` }); return; }
+    if (/\bLine\//i.test(navigator.userAgent)) { setGcalNote({ ok: false, text: "LINEの中のブラウザでは、Google のログインができません。Safari や Chrome で、開き直してください。" }); return; }
+    if (!GOOGLE_CLIENT_ID) { setGcalNote({ ok: false, text: "Google の設定が、まだです。下の「ファイルで保存」を使ってください。" }); return; }
+    setGcalBusy(true);
+    setGcalNote({ ok: true, text: "Google の許可の画面を開いています…" });
+    try {
+      const token = await requestGoogleToken(); // ボタンを押した直後に、許可の画面を開く(ここまでは、待たない)
+      const who = await primaryCalendarName(token).catch(() => "");
+      setGcalNote({ ok: true, text: "Google カレンダーに入れています…" });
+      const r = await pushPlansToGoogle(plans, token, (...a) => window.fetch(...a), (n, t) => setGcalNote({ ok: true, text: `Google カレンダーに入れています… ${n}/${t}` }));
+      const done = r.created + r.updated;
+      const where = who ? `（${who} のカレンダー）` : "";
+      if (r.failed.length === 0) {
+        setGcalNote({ ok: true, text: `${done}件を、Google カレンダーに入れました${where}。新しく ${r.created}件・上書き ${r.updated}件。` });
+      } else {
+        const f = r.failed[0];
+        const why = f.reason === "accessNotConfigured" ? "Google カレンダー API が、オンになっていません" : f.status === 401 ? "許可が、うまく受け取れませんでした" : (f.detail || f.reason || `番号 ${f.status}`);
+        setGcalNote({ ok: false, text: `${done}件を入れました${where}。入れられなかった予定が ${r.failed.length + r.skipped}件あります。（理由: ${why}）` });
+      }
+    } catch (e) {
+      setGcalNote({ ok: false, text: googleErrorText(e) });
+    } finally {
+      setGcalBusy(false);
+    }
+  };
+  // 予定表を開いたら、Google のログイン部品を、先に読み込んでおく(ボタンを押した瞬間に、許可の画面を開けるように)
+  useEffect(() => {
+    if (tab === "schedule" && GOOGLE_CLIENT_ID) preloadGsi().catch(() => {});
+  }, [tab]);
+  // 見ている月の予定を、Google カレンダーに取り込めるファイル(.ics)にして保存する(予備。予定表の中身は、自分の端末に保存するだけ)
   const downloadMonthIcs = () => {
-    const { text, count } = monthIcs(scheduleYear, scheduleMonth, schedule, (k) => (PLAN_TYPES[k] || PLAN_TYPES.memo).label);
+    const { text, count } = monthIcs(scheduleYear, scheduleMonth, schedule, planLabel);
     if (count === 0) { window.alert(`${scheduleYear}年${scheduleMonth + 1}月は、予定がありません。`); return; }
     const blob = new Blob([text], { type: "text/calendar;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -2019,12 +2058,18 @@ function CabShift({ user, shopId }) {
             </div>
 
             <div style={{ marginBottom: 12 }}>
-              <button onClick={downloadMonthIcs} style={{ width: "100%", background: "#fff", border: "1.5px solid #4285F4", color: "#1a56c4", borderRadius: 10, padding: "10px 12px", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
-                📅 この月の予定を、まとめて Google カレンダー用に保存
+              <button onClick={putMonthToGoogle} disabled={gcalBusy} style={{ width: "100%", background: "#4285F4", border: "none", color: "#fff", borderRadius: 10, padding: "11px 12px", fontWeight: 800, fontSize: 14, cursor: gcalBusy ? "default" : "pointer", opacity: gcalBusy ? 0.6 : 1 }}>
+                📅 この月の予定を、Google カレンダーに入れる
               </button>
               <div style={{ fontSize: 11, color: "#888", marginTop: 4, lineHeight: 1.6 }}>
-                保存したファイルは、パソコンの Google カレンダー(右上の歯車 →「設定」→「インポート／エクスポート」)で取り込みます。直したあとは、もう一度、保存して取り込みます。
+                押すと、Google の許可の画面が出ます(アカウントを選びます)。予定を直して、もう一度押すと、同じ予定が上書きされます。予定表で消した予定は、Google カレンダーに残ります。
               </div>
+              {gcalNote && (
+                <div style={{ marginTop: 6, padding: "8px 10px", borderRadius: 8, fontSize: 12, lineHeight: 1.6, fontWeight: 600, background: gcalNote.ok ? "#EAF3FF" : "#FFF0F0", color: gcalNote.ok ? "#1a56c4" : "#C0392B" }}>{gcalNote.text}</div>
+              )}
+              <button onClick={downloadMonthIcs} style={{ marginTop: 6, background: "none", border: "none", color: "#888", textDecoration: "underline", fontSize: 11, cursor: "pointer", padding: 0 }}>
+                ファイルで保存する(予備。Google カレンダーの「インポート」で取り込みます)
+              </button>
             </div>
 
             <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
