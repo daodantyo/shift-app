@@ -10,7 +10,7 @@ import { AuthScreen, VerifyScreen } from "./Auth";
 import { useShopId, DEFAULT_LIFF_ID } from "./shop";
 import MemoPad from "./MemoPad";
 import { addMemoPlans } from "./memo";
-import { gcalUrl } from "./gcal";
+import { gcalUrl, monthIcs, icsFileName } from "./gcal";
 
 const DAYS = ["月", "火", "水", "木", "金", "土", "日"];
 const INITIAL_CAST = [
@@ -507,6 +507,20 @@ function CabShift({ user, shopId }) {
     shop: { label: "お店の予定", emoji: "🏪", color: "#FF6B9D", bg: "#FFF0F5" },
     cast: { label: "キャストの予定", emoji: "👤", color: "#9B6DE0", bg: "#F3EDFC" },
     memo: { label: "やること・メモ", emoji: "📝", color: "#E0A800", bg: "#FFF9E5" },
+  };
+  // 見ている月の予定を、Google カレンダーに取り込めるファイル(.ics)にして保存する(予定表の中身は、自分の端末に保存するだけ)
+  const downloadMonthIcs = () => {
+    const { text, count } = monthIcs(scheduleYear, scheduleMonth, schedule, (k) => (PLAN_TYPES[k] || PLAN_TYPES.memo).label);
+    if (count === 0) { window.alert(`${scheduleYear}年${scheduleMonth + 1}月は、予定がありません。`); return; }
+    const blob = new Blob([text], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = icsFileName(scheduleYear, scheduleMonth);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
   };
 
   const updateCast = (newCast) => { setCast(newCast); saveToFirebase({ cast: newCast }); };
@@ -2002,6 +2016,15 @@ function CabShift({ user, shopId }) {
               <button onClick={() => { if (scheduleMonth === 0) { setScheduleMonth(11); setScheduleYear(scheduleYear - 1); } else setScheduleMonth(scheduleMonth - 1); }} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "6px 14px", cursor: "pointer", color: "#FF6B9D", fontWeight: 700 }}>← 前月</button>
               <div style={{ fontWeight: 800, fontSize: 17, color: "#5C3344" }}>{scheduleYear}年{scheduleMonth + 1}月</div>
               <button onClick={() => { if (scheduleMonth === 11) { setScheduleMonth(0); setScheduleYear(scheduleYear + 1); } else setScheduleMonth(scheduleMonth + 1); }} style={{ background: "#fff", border: "1px solid #FFD9E8", borderRadius: 8, padding: "6px 14px", cursor: "pointer", color: "#FF6B9D", fontWeight: 700 }}>次月 →</button>
+            </div>
+
+            <div style={{ marginBottom: 12 }}>
+              <button onClick={downloadMonthIcs} style={{ width: "100%", background: "#fff", border: "1.5px solid #4285F4", color: "#1a56c4", borderRadius: 10, padding: "10px 12px", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
+                📅 この月の予定を、まとめて Google カレンダー用に保存
+              </button>
+              <div style={{ fontSize: 11, color: "#888", marginTop: 4, lineHeight: 1.6 }}>
+                保存したファイルは、パソコンの Google カレンダー(右上の歯車 →「設定」→「インポート／エクスポート」)で取り込みます。直したあとは、もう一度、保存して取り込みます。
+              </div>
             </div>
 
             <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
