@@ -9,6 +9,7 @@ import ShopSettings from "./ShopSettings";
 import { AuthScreen, VerifyScreen } from "./Auth";
 import { useShopId, DEFAULT_LIFF_ID } from "./shop";
 import MemoPad from "./MemoPad";
+import InterviewTab from "./InterviewTab";
 import { addMemoPlans } from "./memo";
 import { gcalUrl, monthIcs, icsFileName, monthPlans, pushPlansToGoogle } from "./gcal";
 import { GOOGLE_CLIENT_ID } from "./gcal-config";
@@ -1098,7 +1099,7 @@ function CabShift({ user, shopId }) {
           </button>
         </div>
         <div style={{ display: "flex", flexWrap: "wrap" }}>
-          {[{ id: "shift", label: "シフト" }, { id: "sales", label: "売上" }, { id: "expenses", label: "経費" }, { id: "summary", label: "集計" }, { id: "schedule", label: "予定表" }, { id: "cast", label: "キャスト" }, { id: "requests", label: `希望シフト${pendingRequests.filter(([, r]) => r.status === "pending").length ? ` (${pendingRequests.filter(([, r]) => r.status === "pending").length})` : ""}` }].map((t) => (
+          {[{ id: "shift", label: "シフト" }, { id: "sales", label: "売上" }, { id: "expenses", label: "経費" }, { id: "summary", label: "集計" }, { id: "schedule", label: "予定表" }, { id: "cast", label: "キャスト" }, { id: "interview", label: "面接" }, { id: "requests", label: `希望シフト${pendingRequests.filter(([, r]) => r.status === "pending").length ? ` (${pendingRequests.filter(([, r]) => r.status === "pending").length})` : ""}` }].map((t) => (
             <button key={t.id} onClick={() => setTab(t.id)} style={{ padding: "10px 20px", border: "none", cursor: "pointer", fontWeight: 600, fontSize: 14, borderRadius: "8px 8px 0 0", background: tab === t.id ? "#FFF5F8" : "transparent", color: tab === t.id ? "#5C3344" : "#D4789F" }}>{t.label}</button>
           ))}
         </div>
@@ -2186,6 +2187,8 @@ function CabShift({ user, shopId }) {
             ))}
           </div>
         )}
+
+        {tab === "interview" && <InterviewTab base={shopBase} />}
 
         {tab === "requests" && (
           <div>
