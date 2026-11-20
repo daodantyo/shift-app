@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { dealCourse, dealNet, monthKey, summarize, toCsv, todayStr, yen } from "./calc";
+import { dealCourse, dealNet, monthKey, purgeInfo, summarize, toCsv, todayStr, yen } from "./calc";
 import WomanSheet from "./Sheet";
 import { isLineBrowser, externalBrowserUrl } from "./env";
 
@@ -38,6 +38,19 @@ export default function SummaryPage({ data, deals, api }) {
     a.download = `報酬_${day || month || "全期間"}.csv`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+
+  // 「（削除済）」の女性の登録を、全部の月ぶん、完全に消す（元に戻せない）
+  const purge = (memberId) => {
+    if (members[memberId]) return; // 設定に残っている女性は、消さない
+    const all = deals.filter((d) => String(d.memberId) === String(memberId));
+    if (all.length === 0) return;
+    const info = purgeInfo(all);
+    const period = info.first ? `${fmtDay(info.first)}〜${fmtDay(info.last)}、` : "";
+    const msg = `「（削除済）」の登録 ${info.count}件（${period}売上 ${yen(info.sales)}）を、全部の月ぶん、完全に消します。\n`
+      + (info.unpaid ? `未払の手取り ${yen(info.unpaid)} が、まだ残っています。\n` : "")
+      + "元に戻せません。先に「CSVで保存」で控えをとることをおすすめします。\n\n本当に消しますか？";
+    if (window.confirm(msg)) api.deleteDeals(all.map((d) => d.id));
   };
 
   const payAll = (memberId) => {
@@ -89,7 +102,7 @@ export default function SummaryPage({ data, deals, api }) {
                 {rowList.map((r) => (
                   <MemberRow key={r.memberId} r={r} name={members[r.memberId]?.name || "（削除済）"} member={members[r.memberId]} label={label}
                     open={openMember === r.memberId} onToggle={() => setOpenMember(openMember === r.memberId ? null : r.memberId)}
-                    onPayAll={() => payAll(r.memberId)} onPdf={() => setPrinting({ ids: [r.memberId], mode: "file" })} detail={monthDeals.filter((d) => d.memberId === r.memberId)} api={api} />
+                    onPayAll={() => payAll(r.memberId)} onPurge={members[r.memberId] ? null : () => purge(r.memberId)} onPdf={() => setPrinting({ ids: [r.memberId], mode: "file" })} detail={monthDeals.filter((d) => d.memberId === r.memberId)} api={api} />
                 ))}
               </tbody>
             </table>
@@ -100,7 +113,7 @@ export default function SummaryPage({ data, deals, api }) {
   );
 }
 
-function MemberRow({ r, name, member, label, open, onToggle, onPayAll, onPdf, detail, api }) {
+function MemberRow({ r, name, member, label, open, onToggle, onPayAll, onPurge, onPdf, detail, api }) {
   return (
     <>
       <tr style={{ cursor: "pointer" }} onClick={onToggle}>
@@ -114,6 +127,7 @@ function MemberRow({ r, name, member, label, open, onToggle, onPayAll, onPdf, de
         <td>
           <div className="row" style={{ flexWrap: "nowrap" }}>
             <button className="btn small" onClick={(e) => { e.stopPropagation(); onPdf(); }}>PDF</button>
+            {onPurge && <button className="btn small danger" onClick={(e) => { e.stopPropagation(); onPurge(); }}>完全に消す</button>}
             <button className="btn small" disabled={!r.unpaid} onClick={(e) => { e.stopPropagation(); onPayAll(); }}>まとめて支払済</button>
           </div>
         </td>
