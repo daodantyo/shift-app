@@ -1,0 +1,187 @@
+.cm-root {
+  --navy: #1b2a41;
+  --navy-2: #24405f;
+  --accent: #e0a533;
+  --bg: #f4f6f9;
+  --card: #ffffff;
+  --text: #1f2933;
+  --muted: #6b7280;
+  --line: #e3e7ee;
+  --ok: #2e8b57;
+  --warn: #c0392b;
+}
+.cm-root, .cm-root * { box-sizing: border-box; }
+.cm-root { margin: 0; background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", Meiryo, sans-serif; font-size: 15px; }
+.cm-root button, .cm-root input, .cm-root select, .cm-root textarea { font: inherit; }
+.cm-root .app { max-width: 960px; margin: 0 auto; padding-bottom: 80px; }
+.cm-root .header { background: var(--navy); color: #fff; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; }
+.cm-root .header h1 { font-size: 17px; margin: 0; letter-spacing: .04em; }
+.cm-root .header .sub { font-size: 12px; opacity: .8; }
+.cm-root .tabs { display: flex; background: var(--navy-2); }
+.cm-root .tabs button { flex: 1 1 auto; padding: 12px 4px; border: 0; background: transparent; color: #cfd8e3; font-weight: 600; border-bottom: 3px solid transparent; cursor: pointer; }
+.cm-root .tabs button.active { color: #fff; border-bottom-color: var(--accent); }
+.cm-root .page { padding: 14px 12px; display: flex; flex-direction: column; gap: 14px; }
+.cm-root .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+.cm-root .card h2 { font-size: 15px; margin: 0 0 10px; color: var(--navy); }
+.cm-root .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.cm-root .field { display: flex; flex-direction: column; gap: 4px; }
+.cm-root .field label { font-size: 12px; color: var(--muted); }
+.cm-root .field input, .cm-root .field select, .cm-root .field textarea { padding: 9px 10px; border: 1px solid #cfd6e0; border-radius: 8px; background: #fff; width: 100%; }
+.cm-root .field input:focus, .cm-root .field select:focus { outline: 2px solid rgba(224,165,51,.45); border-color: var(--accent); }
+.cm-root .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cm-root .btn { padding: 9px 14px; border-radius: 8px; border: 1px solid #cfd6e0; background: #fff; cursor: pointer; }
+.cm-root .btn.primary { background: var(--navy); color: #fff; border-color: var(--navy); }
+.cm-root .btn.accent { background: var(--accent); color: #1b1b1b; border-color: var(--accent); font-weight: 700; }
+.cm-root .btn.danger { color: var(--warn); border-color: #f1c4c0; }
+.cm-root .btn.small { padding: 5px 9px; font-size: 13px; }
+.cm-root .btn:disabled { opacity: .5; cursor: default; }
+.cm-root .preview { background: #fff8e8; border: 1px dashed var(--accent); border-radius: 10px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: baseline; }
+.cm-root .preview .big { font-size: 22px; font-weight: 700; color: var(--navy); }
+.cm-root .table-wrap { overflow-x: auto; }
+.cm-root table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.cm-root th, .cm-root td { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+.cm-root th { color: var(--muted); font-weight: 600; font-size: 12px; }
+.cm-root td.num, .cm-root th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.cm-root .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.cm-root .badge.paid { background: #e3f4ea; color: var(--ok); }
+.cm-root .badge.unpaid { background: #fdeceb; color: var(--warn); }
+.cm-root .stat { display: flex; flex-direction: column; gap: 2px; }
+.cm-root .stat .k { font-size: 12px; color: var(--muted); }
+.cm-root .stat .v { font-size: 20px; font-weight: 700; color: var(--navy); font-variant-numeric: tabular-nums; }
+.cm-root .muted { color: var(--muted); font-size: 13px; }
+.cm-root .empty { text-align: center; color: var(--muted); padding: 24px 0; }
+.cm-root .linkbtn { border: 0; background: transparent; color: var(--navy); text-decoration: underline; cursor: pointer; font-size: 13px; padding: 4px; }
+.cm-root .tier { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; align-items: center; margin-top: 6px; }
+.cm-root .tier.tier3 { grid-template-columns: 1.2fr 1fr 1fr auto; }
+.cm-root .tier input { min-width: 0; }
+.cm-root .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: #1f2933; color: #fff; padding: 10px 16px; border-radius: 999px; font-size: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+@media (max-width: 480px) {
+  .cm-root .header h1 { font-size: 15px; }
+  .cm-root .tabs button { font-size: 14px; }
+}
+.cm-root .banner { margin: 12px 12px 0; background: #fff4d6; border: 1px solid #f0c36d; color: #6b4b00; border-radius: 10px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; }
+/* 金額の入力欄（売上→…→計） */
+.cm-root .money-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; background: #f8fafc; border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+.cm-root .money-grid .field input { padding: 8px 8px; }
+.cm-root .calc-box { padding: 9px 10px; border-radius: 8px; background: #eef2f7; border: 1px solid #d6dde8; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--navy); }
+.cm-root .calc-box.strong { background: #fff4d6; border-color: #f0c36d; }
+.cm-root .money-grid .field input.sales-input { font-weight: 700; color: var(--navy); background: #eef2f7; }
+.cm-root .net-grid { background: #f3f8f4; border-color: #cfe3d3; }
+.cm-root .net-grid .calc-box.strong { background: #e3f4ea; border-color: #9fd3b1; color: #1e6b3f; }
+.cm-root .print-table.small { font-size: 11px; }
+.cm-root .print-table.small th, .cm-root .print-table.small td { padding: 3px 4px; }
+/* 勤務時間の入力 */
+.cm-root .field.hours { grid-column: 1 / -1; min-width: 0; }
+.cm-root .hours-input { display: flex; align-items: center; gap: 2px; flex-wrap: nowrap; width: 100%; min-width: 0; }
+.cm-root .hours-input .hours-sel { padding: 8px 0; text-align: center; border: 1px solid #cfd6e0; border-radius: 8px; background: #fff; font-size: 14px; min-width: 0; width: 0; flex: 1 1 0; }
+.cm-root .hours-input .hours-sep { padding: 0 2px; color: var(--muted); flex: 0 0 auto; }
+.cm-root .hours-input > span { flex: 0 0 auto; }
+.cm-root .hours-input .hours-clear { border: 0; background: transparent; color: var(--muted); cursor: pointer; padding: 0 4px; font-size: 16px; }
+/* 見本形式の明細シート */
+.cm-root .sheet { background: #fff; color: #000; padding: 6px 2px; min-width: 760px; }
+.cm-root .sheet table { border-collapse: collapse; font-size: 12px; }
+.cm-root .sheet-head { width: 300px; margin-bottom: 12px; }
+.cm-root .sheet-head th, .cm-root .sheet-head td { border: 1px solid #000; padding: 3px 8px; white-space: nowrap; }
+.cm-root .sheet-head th { width: 110px; font-weight: 500; text-align: center; background: #fff; color: #000; font-size: 12px; }
+.cm-root .sheet-head td { text-align: center; }
+.cm-root .sheet-table { width: 100%; }
+.cm-root .sheet-table th, .cm-root .sheet-table td { border: 1px solid #000; padding: 3px 5px; height: 22px; white-space: nowrap; color: #000; }
+.cm-root .sheet-table th { font-weight: 500; text-align: center; background: #fff; font-size: 11px; }
+.cm-root .sheet-table td.num, .cm-root .sheet-table th.num { text-align: right; }
+.cm-root .sheet-table td.no, .cm-root .sheet-table th.no { text-align: center; width: 36px; }
+.cm-root .sheet-table .opt { min-width: 140px; white-space: normal; }
+.cm-root .sheet-table tr.total td { border-top: 2px solid #000; }
+.cm-root .sheet-table tr.total td.label { text-align: center; }
+.cm-root .sheet-net { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+.cm-root .sheet-net .box { border: 2px solid #000; min-width: 160px; text-align: center; }
+.cm-root .sheet-net .box.wide { min-width: 200px; }
+.cm-root .sheet-net .box .k { font-weight: 700; border-bottom: 1px solid #000; padding: 2px 8px; font-size: 12px; }
+.cm-root .sheet-net .box .v { padding: 3px 8px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.cm-root .sheet-net .op { font-size: 18px; }
+.cm-root .sheet-foot { margin-top: 8px; font-size: 11px; }
+.cm-root .sheet-page { margin-bottom: 30px; }
+@media print {
+  .cm-root .sheet-page { break-after: page; page-break-after: always; margin: 0; }
+  .cm-root .sheet-page:last-child { break-after: auto; page-break-after: auto; }
+  .cm-root .sheet { min-width: 0; }
+}
+/* 印刷・PDF */
+.cm-root .print-overlay { position: fixed; inset: 0; background: #fff; z-index: 3000; overflow: auto; }
+.cm-root .print-toolbar { position: sticky; top: 0; background: #f4f6f9; border-bottom: 1px solid var(--line); padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cm-root .print-sheet { max-width: 800px; margin: 0 auto; padding: 24px 20px 60px; color: #000; }
+.cm-root .print-sheet h1 { font-size: 20px; margin: 0 0 6px; }
+.cm-root .print-sheet h2 { font-size: 15px; margin: 18px 0 6px; border-left: 4px solid #1b2a41; padding-left: 8px; }
+.cm-root .print-meta { font-size: 13px; color: #333; margin-bottom: 12px; }
+.cm-root .print-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.cm-root .print-table th, .cm-root .print-table td { border: 1px solid #999; padding: 5px 6px; white-space: normal; }
+.cm-root .print-table th { background: #eef1f5; color: #000; font-size: 12px; }
+.cm-root .print-table tr.total td { font-weight: 700; background: #f7f7f7; }
+.cm-root .print-section { break-inside: avoid; }
+@media print {
+  .cm-root { background: #fff; }
+  .cm-root .no-print, .cm-root .toast { display: none !important; }
+  .cm-root .app { max-width: none; padding: 0; }
+  .cm-root .app > .page > .card, .cm-root .app > .page > .banner { display: none !important; }
+  .cm-root .print-overlay { position: static; overflow: visible; }
+  .cm-root .print-sheet { max-width: none; padding: 0; }
+}
+/* 紹介スカウトバック（勤務・報酬管理表） */
+.cm-root .scout-sheet { min-width: 700px; max-width: 820px; margin: 0 auto; background: #fff; color: #1f2933; padding: 2px; font-size: 13px; }
+.cm-root .scout-sheet table { border-collapse: collapse; width: 100%; }
+.cm-root .scout-sheet th, .cm-root .scout-sheet td { border: 1px solid #9aa5b5; padding: 4px 6px; white-space: nowrap; text-align: left; font-size: 13px; color: #1f2933; }
+.cm-root .scout-title { background: #283d60; color: #fff; font-weight: 700; font-size: 17px; text-align: center; padding: 12px 8px; }
+.cm-root .scout-info th { width: 15%; background: #dce8f5; color: #24334a; text-align: center; }
+.cm-root .scout-info td { width: 35%; }
+.cm-root .scout-table { margin-top: 10px; }
+.cm-root .scout-table thead th { background: #dce8f5; color: #24334a; text-align: center; font-weight: 700; }
+.cm-root .scout-table th.w, .cm-root .scout-table td.w { width: 54px; }
+.cm-root .scout-table th.memo, .cm-root .scout-table td.memo { width: 26%; white-space: normal; }
+.cm-root .scout-table td.c { text-align: center; }
+.cm-root .scout-table td.num, .cm-root .scout-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.cm-root .scout-table tr.blank td { height: 26px; }
+.cm-root .scout-table tr.sum td { background: #f1f5fa; font-weight: 700; }
+.cm-root .scout-table input { width: 100%; min-width: 0; border: 0; border-radius: 4px; padding: 3px 4px; background: #fffbe8; color: inherit; font: inherit; }
+.cm-root .scout-table td.c input { text-align: center; }
+.cm-root .scout-table input:focus { outline: 2px solid rgba(224,165,51,.6); }
+.cm-root .scout-sheet.capturing .scout-table input { background: transparent; }
+.cm-root .scout-sumhead { background: #283d60; color: #fff; font-weight: 700; text-align: center; padding: 7px 8px; margin-top: 14px; }
+.cm-root .scout-sumtable td { background: #f1f5fa; }
+.cm-root .scout-sumtable td.num { width: 34%; background: #fff; text-align: right; font-variant-numeric: tabular-nums; }
+.cm-root .scout-sumtable tr.strong td { font-weight: 700; }
+.cm-root .scout-sumtable tr.final td { font-weight: 700; font-size: 15px; background: #ffe0a3; }
+.cm-root .scout-note { margin-top: 8px; font-size: 11px; color: #64748b; }
+/* 登録の入力：しまっておく項目と、まとまりごとの並び */
+.cm-root .in-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+.cm-root .in-meta b { color: var(--ink, #1f2933); font-weight: 600; }
+.cm-root .in-group { margin-top: 14px; }
+.cm-root .in-group h3 { font-size: 13px; color: var(--navy); margin: 0 0 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.cm-root .in-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.cm-root .in-grid.one { max-width: 220px; }
+.cm-root .in-result { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
+.cm-root .in-result .field label { line-height: 1.3; }
+.cm-root .in-result .calc-box { padding: 9px 8px; font-size: 15px; text-align: center; }
+.cm-root .in-result .calc-box.net { background: #e3f4ea; border-color: #9fd3b1; color: #1e6b3f; }
+.cm-root .in-group .field input.sales-input, .cm-root .field input.sales-input { font-weight: 700; color: var(--navy); background: #eef2f7; }
+@media (max-width: 400px) {
+  .cm-root .in-result .calc-box { font-size: 13px; padding: 8px 4px; }
+}
+/* スカウトバックの上の部分 */
+.cm-root .scout-pick { max-width: 320px; }
+.cm-root .scout-range .btn { padding: 10px 22px; font-size: 15px; font-weight: 700; }
+.cm-root .scout-dates { margin-top: 12px; max-width: 420px; }
+.cm-root .scout-period { margin: 12px 0 0; font-size: 14px; color: var(--navy); font-weight: 600; }
+.cm-root .scout-table td.memo input::placeholder { color: #a39a7d; }
+/* 登録：店舗ごとのまとまり（同じ日に、店舗が2つ以上） */
+.cm-root .in-shop { border: 1px solid #cfd6e0; background: #fcfdff; border-radius: 12px; padding: 12px; margin-top: 14px; }
+.cm-root .in-shop-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; color: var(--navy); font-size: 15px; }
+.cm-root .in-total { margin-top: 16px; padding-top: 10px; border-top: 2px solid var(--navy); }
+.cm-root .in-total h3 { font-size: 13px; color: var(--navy); margin: 0; }
+
+/* キャスト管理の中に入れたときの外わく */
+.cm-root.cm-embed { border-radius: 12px; overflow: hidden; border: 1px solid var(--line); }
+.cm-root .cm-loading { padding: 28px 16px; text-align: center; color: var(--muted); }
+/* 印刷の画面を開いているあいだは、印刷するとき、キャスト管理のほかの部分を出さない */
+@media print {
+  html.cm-print-open #root { display: none !important; }
+}
