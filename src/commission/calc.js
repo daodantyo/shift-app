@@ -46,6 +46,18 @@ export function monthKey(date) {
   return (date || "").slice(0, 7); // "2026-09-08" -> "2026-09"
 }
 
+// 登録をまとめて完全に消す前に、確認の画面に出す内容（件数・期間・売上・未払の手取り）
+export function purgeInfo(deals) {
+  const dates = deals.map((d) => d.date).filter(Boolean).sort();
+  return {
+    count: deals.length,
+    first: dates[0] || "",
+    last: dates[dates.length - 1] || "",
+    sales: deals.reduce((s, d) => s + dealSales(d), 0),
+    unpaid: deals.filter((d) => !d.paid).reduce((s, d) => s + dealNet(d), 0),
+  };
+}
+
 export function todayStr() {
   const d = new Date();
   const p = (x) => String(x).padStart(2, "0");

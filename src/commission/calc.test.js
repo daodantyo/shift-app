@@ -1,6 +1,6 @@
 // jest で動かす(もとは node:test)
 import assert from "assert/strict";
-import { autoSales, calcBack, computeCommissions, dealNet, dealSales, dealTake, resolveValue, scoutRows, scoutSettings, scoutTotals, summarize } from "./calc.js";
+import { autoSales, calcBack, computeCommissions, dealNet, dealSales, dealTake, purgeInfo, resolveValue, scoutRows, scoutSettings, scoutTotals, summarize } from "./calc.js";
 
 const types = {
   intro: { name: "紹介料", mode: "rate", value: 10, tierBasis: "amount", tiers: { a: { min: 100000, value: 15 } } },
@@ -133,4 +133,23 @@ test("紹介スカウトバック：設定が空・おかしいときは初期�
   const t = scoutTotals([], scoutSettings({}));
   assert.equal(t.total, 0);
   assert.equal(t.days, 0);
+});
+
+test("完全に消す：確認の画面に出す内容（件数・期間・売上・未払の手取り）", () => {
+  const deals = [
+    { id: "a", date: "2026-10-05", coursePrice: 20000, courseBack: 14000, paid: false },
+    { id: "b", date: "2026-09-01", coursePrice: 18000, courseBack: 13000, expense: 1000, paid: true },
+    { id: "c", date: "2026-11-02", amount: 30000, courseBack: 21000, expense: 500 },
+  ];
+  const i = purgeInfo(deals);
+  assert.equal(i.count, 3);
+  assert.equal(i.first, "2026-09-01");
+  assert.equal(i.last, "2026-11-02");
+  assert.equal(i.sales, 20000 + 18000 + 30000);
+  assert.equal(i.unpaid, 14000 + (21000 - 500)); // 支払済の b は入らない
+  // 登録が0件・日付なし・全部支払済
+  assert.deepEqual(purgeInfo([]), { count: 0, first: "", last: "", sales: 0, unpaid: 0 });
+  const p = purgeInfo([{ id: "x", coursePrice: 1000, courseBack: 700, paid: true }]);
+  assert.equal(p.first, "");
+  assert.equal(p.unpaid, 0);
 });
