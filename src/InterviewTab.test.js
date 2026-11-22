@@ -67,11 +67,13 @@ beforeEach(() => {
   get.mockReset();
   makeImageSet.mockReset();
   window.confirm = jest.fn(() => true);
+  window.scrollTo = jest.fn(); // jsdom には、画面を動かす機能がないので、作り物にする
   show();
 });
 afterEach(() => {
   act(() => { root.unmount(); });
   host.remove();
+  Object.defineProperty(window, "scrollY", { value: 0, configurable: true, writable: true });
 });
 
 test("一覧: 面接日が新しい順に、名前・年齢・件数・結果が出る。鍵の案内と、できないことの注意も出る", () => {
@@ -86,6 +88,18 @@ test("一覧: 面接日が新しい順に、名前・年齢・件数・結果が
   expect(host.textContent).toContain("お店のログインをした人だけが見られます");
   expect(host.textContent).toContain("画面の撮影(スクリーンショット)は、止められません");
   expect(host.textContent).toContain("自動バックアップは、まだありません");
+});
+
+test("人を開くと、いちばん上から見せる。一覧にもどると、開く前に見ていた所に戻す(最初に開いたときは、動かさない)", () => {
+  emit(`${BASE}/interviews`, people);
+  expect(window.scrollTo).not.toHaveBeenCalled();
+  Object.defineProperty(window, "scrollY", { value: 420, configurable: true, writable: true }); // 一覧を、下まで動かした
+  click(host.querySelector("button[aria-label='ミウ を開く']"));
+  expect(window.scrollTo).toHaveBeenLastCalledWith(0, 0);
+  Object.defineProperty(window, "scrollY", { value: 0, configurable: true, writable: true });
+  click(buttonText("一覧にもどる"));
+  expect(window.scrollTo).toHaveBeenLastCalledWith(0, 420);
+  expect(window.scrollTo).toHaveBeenCalledTimes(2);
 });
 
 test("一覧だけでは、大きな画像の場所を読まない(書類の写真は、一覧に出ない)", () => {
