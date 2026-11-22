@@ -13,6 +13,7 @@ import InterviewTab from "./InterviewTab";
 // 「報酬」タブ(旧・報酬管理)。Excel や PDF の重い部品を含むので、開いたときだけ読み込む
 const CommissionApp = lazy(() => import("./commission/CommissionApp"));
 import { addMemoPlans } from "./memo";
+import { castRecordCounts, removeCastConfirm } from "./cast-remove";
 import { gcalUrl, monthIcs, icsFileName, monthPlans, pushPlansToGoogle } from "./gcal";
 import { GOOGLE_CLIENT_ID } from "./gcal-config";
 import { preloadGsi, requestGoogleToken, primaryCalendarName, googleErrorText } from "./gcal-google";
@@ -674,7 +675,13 @@ function CabShift({ user, shopId }) {
     setNewName(""); setNewRank("キャスト"); setShowAddForm(false);
   };
 
-  const removeCast = (id) => updateCast(cast.filter((c) => c.id !== id));
+  // 削除は、押しまちがいで、すぐ消えないように、確認を出す(その女性の出勤・指名・売上の記録は、データには残るが、画面には出なくなる)
+  const removeCast = (id) => {
+    const member = cast.find((c) => c.id === id);
+    if (!member) return;
+    if (!window.confirm(removeCastConfirm(member.name, castRecordCounts(id, shifts, stats)))) return;
+    updateCast(cast.filter((c) => c.id !== id));
+  };
   const saveEdit = () => { if (!editingCast) return; updateCast(cast.map((c) => c.id === editingCast.id ? editingCast : c)); setEditingCast(null); };
   // キャストの並び順を上下に入れ替える
   const moveCast = (index, dir) => {
