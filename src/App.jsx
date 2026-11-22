@@ -13,6 +13,7 @@ import InterviewTab from "./InterviewTab";
 // 「報酬」タブ(旧・報酬管理)。Excel や PDF の重い部品を含むので、開いたときだけ読み込む
 const CommissionApp = lazy(() => import("./commission/CommissionApp"));
 import { addMemoPlans } from "./memo";
+import { castRemovalPlan, removeCastConfirm } from "./cast-remove";
 import { gcalUrl, monthIcs, icsFileName, monthPlans, pushPlansToGoogle } from "./gcal";
 import { GOOGLE_CLIENT_ID } from "./gcal-config";
 import { preloadGsi, requestGoogleToken, primaryCalendarName, googleErrorText } from "./gcal-google";
@@ -674,7 +675,23 @@ function CabShift({ user, shopId }) {
     setNewName(""); setNewRank("キャスト"); setShowAddForm(false);
   };
 
-  const removeCast = (id) => updateCast(cast.filter((c) => c.id !== id));
+  // 「完全に削除」。名簿から外すだけでなく、その女性の出勤・指名と売上・LINE の登録・希望シフト・抽選の記録も、全部、消す(src/cast-remove.js)。
+  // 確認を出す。消すものは、1回の update で、まとめて書く(途中までで止まらない)。書けなかったときは、画面を元に戻す
+  const removeCast = (id) => {
+    const member = cast.find((c) => c.id === id);
+    if (!member) return;
+    const plan = castRemovalPlan(id, { cast, shifts, stats, requests, castLine, lottery: lotteryData });
+    if (!window.confirm(removeCastConfirm(member.name, plan.counts))) return;
+    const before = { cast, shifts, stats };
+    setCast(plan.newCast); setShifts(plan.newShifts); setStats(plan.newStats);
+    update(ref(db, shopBase), plan.updates).then(() => {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1500);
+    }).catch(() => {
+      setCast(before.cast); setShifts(before.shifts); setStats(before.stats);
+      window.alert("完全に削除できませんでした。通信を確かめて、もう一度おためしください。");
+    });
+  };
   const saveEdit = () => { if (!editingCast) return; updateCast(cast.map((c) => c.id === editingCast.id ? editingCast : c)); setEditingCast(null); };
   // キャストの並び順を上下に入れ替える
   const moveCast = (index, dir) => {
@@ -2182,7 +2199,7 @@ function CabShift({ user, shopId }) {
                       </div>
                     </div>
                     <button onClick={() => setEditingCast({ ...member })} style={{ background: "#FFF0F5", border: "none", borderRadius: 8, padding: "8px 14px", cursor: "pointer", color: "#FF6B9D", fontWeight: 600, fontSize: 13 }}>編集</button>
-                    <button onClick={() => removeCast(member.id)} style={{ background: "#fff0f0", border: "none", borderRadius: 8, padding: "8px 14px", cursor: "pointer", color: "#FF6B6B", fontWeight: 600, fontSize: 13 }}>削除</button>
+                    <button onClick={() => removeCast(member.id)} style={{ background: "#fff0f0", border: "none", borderRadius: 8, padding: "8px 14px", cursor: "pointer", color: "#FF6B6B", fontWeight: 600, fontSize: 13 }}>完全に削除</button>
                   </>
                 )}
               </div>
