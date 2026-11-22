@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ref, onValue, update } from "firebase/database";
 import { db } from "./firebase";
 import { STATUSES, statusOf, readPeople, filterPeople, countByFilter, newPersonRecord, makeId, fmtDate, isDue, saveErrorText } from "./interview";
@@ -27,6 +27,21 @@ export default function InterviewTab({ base }) {
   const shown = useMemo(() => filterPeople(list, { query, filter }), [list, query, filter]);
   const open = openId ? list.find((p) => p.id === openId) : null;
 
+  // 一覧を下まで動かしてから、人を開くと、その人の画面が、途中から出てしまう(名前や「一覧にもどる」が、画面の上に隠れる)。
+  // 人の画面を開いたら、いちばん上から見せる。一覧にもどったら、開く前に見ていた所に戻す。
+  const showing = !!open;
+  const listScroll = useRef(0); // 開く前に、一覧が、どこまで下がっていたか
+  const wasShowing = useRef(false);
+  useLayoutEffect(() => {
+    if (wasShowing.current === showing) return; // 切りかわったときだけ(最初に開いたときは、動かさない)
+    wasShowing.current = showing;
+    window.scrollTo(0, showing ? 0 : listScroll.current);
+  }, [showing]);
+  function openPerson(id) {
+    listScroll.current = window.scrollY;
+    setOpenId(id);
+  }
+
   async function create(clean) {
     setBusy(true);
     setError("");
@@ -34,6 +49,7 @@ export default function InterviewTab({ base }) {
     try {
       await update(ref(db, base), { [`interviews/${id}`]: newPersonRecord(clean, Date.now()) });
       setCreating(false);
+      listScroll.current = window.scrollY;
       setOpenId(id); // 登録したら、そのまま、その人の画面へ(写真・書類を入れられる)
     } catch (e) {
       setError(saveErrorText(e));
@@ -90,7 +106,7 @@ export default function InterviewTab({ base }) {
         <div style={{ ...S.card, ...S.note, textAlign: "center" }}>
           {list.length === 0 ? "まだ、面接した人が登録されていません。「面接を登録する」から、入れられます。" : "あてはまる人が、いません。"}
         </div>
-      ) : shown.map((p) => <PersonRow key={p.id} p={p} onOpen={() => setOpenId(p.id)} />)}
+      ) : shown.map((p) => <PersonRow key={p.id} p={p} onOpen={() => openPerson(p.id)} />)}
 
       <div style={{ ...S.note, marginTop: 14 }}>
         ※ 画面の撮影(スクリーンショット)は、止められません。<br />
