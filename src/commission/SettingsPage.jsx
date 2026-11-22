@@ -50,7 +50,7 @@ function MembersCard({ members, deals, api }) {
   const del = (id) => {
     const used = deals.filter((d) => d.memberId === id).length;
     const msg = used
-      ? `${members[id].name} には ${used}件 の登録があります。削除すると登録一覧で「（削除済）」と表示されます。代わりに「非表示」にすることもできます。本当に削除しますか？`
+      ? `${members[id].name} には ${used}件 の登録があります。削除すると登録一覧で「（削除済）」と表示されます（「集計」の「完全に消す」で、その登録も消せます）。代わりに「非表示」にすることもできます。本当に削除しますか？`
       : `${members[id].name} を削除しますか？`;
     if (window.confirm(msg)) api.deleteMember(id);
   };

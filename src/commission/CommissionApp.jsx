@@ -49,6 +49,13 @@ export default function CommissionApp({ base, user }) {
     addDeal: async (d) => { await push(ref(db, `${base}/deals`), { ...d, createdAt: Date.now() }); showToast("登録しました"); },
     updateDeal: async (id, d) => { await update(ref(db, `${base}/deals/${id}`), d); showToast("更新しました"); },
     deleteDeal: async (id) => { await remove(ref(db, `${base}/deals/${id}`)); showToast("削除しました"); },
+    // 登録を、まとめて完全に消す（元に戻せない。「（削除済）」の女性の登録を消すときに使う。1回の保存で、全部消える）
+    deleteDeals: async (ids) => {
+      const patch = {};
+      for (const id of ids) patch[`deals/${id}`] = null;
+      await update(ref(db, base), patch);
+      showToast(`${ids.length}件を、完全に消しました`);
+    },
     setPaid: async (ids, paid) => {
       const patch = {};
       for (const id of ids) {
