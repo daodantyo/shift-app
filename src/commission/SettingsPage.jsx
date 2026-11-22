@@ -68,7 +68,7 @@ function MembersCard({ members, deals, api }) {
       </form>
       {ids.length === 0 ? <div className="empty">まだ登録がありません</div> : (
         <div className="table-wrap" style={{ marginTop: 10 }}>
-          <table>
+          <table className="member-list">
             <tbody>
               {ids.map((id) => {
                 const m = members[id];
@@ -92,7 +92,7 @@ function MembersCard({ members, deals, api }) {
                       )}
                     </td>
                     <td>
-                      <div className="row" style={{ justifyContent: "flex-end", flexWrap: "nowrap" }}>
+                      <div className="row" style={{ justifyContent: "flex-end" }}>
                         {isEdit ? (
                           <>
                             <button className="btn small primary" onClick={async () => { if (editing.name.trim()) await api.updateMember(id, { name: editing.name.trim(), shop: (editing.shop || "").trim(), hours: (editing.hours || "").trim(), scout: (editing.scout || "").trim() }); setEditing(null); }}>保存</button>

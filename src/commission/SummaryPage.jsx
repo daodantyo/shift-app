@@ -82,7 +82,7 @@ export default function SummaryPage({ data, deals, api }) {
             <button className="btn" onClick={() => setPrinting({ ids: rowList.map((r) => r.memberId), mode: "separate" })} disabled={monthDeals.length === 0}>女性ごとに別々のPDF</button>
           </div>
         </div>
-        <div className="grid" style={{ marginTop: 14 }}>
+        <div className="grid stats" style={{ marginTop: 14 }}>
           <div className="stat"><span className="k">件数</span><span className="v">{total.count}件</span></div>
           <div className="stat"><span className="k">売上合計</span><span className="v">{yen(total.amount)}</span></div>
           <div className="stat"><span className="k">報酬総額（計の合計）</span><span className="v">{yen(total.take)}</span></div>

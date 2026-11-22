@@ -185,3 +185,17 @@
 @media print {
   html.cm-print-open #root { display: none !important; }
 }
+
+/* スマホで見たときに、おかしかった所の直し */
+/* 登録：「計」「手取り」の文字が2行に折れても、金額の箱の高さがそろうように、箱を下にそろえる */
+.cm-root .in-result .field.calc { justify-content: flex-end; }
+/* 集計：数字（件数・売上…）は、スマホでも2列に並べる（前は、1列で、縦に長かった） */
+.cm-root .grid.stats { grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); }
+/* 設定の女性の一覧：スマホで、名前の下の文字と「編集・非表示・削除」のボタンが、右に切れないように、折り返す */
+.cm-root .member-list td { white-space: normal; }
+@media (max-width: 560px) {
+  /* スマホでは、名前と店舗の文字を、いっぱいの幅で出し、そのすぐ下に、ボタンを1行で並べる */
+  .cm-root .member-list tr { display: block; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .cm-root .member-list td { display: block; width: auto !important; border-bottom: 0; padding: 4px 6px; }
+  .cm-root .member-list td .row { justify-content: flex-start !important; }
+}
