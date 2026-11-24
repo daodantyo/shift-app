@@ -1323,9 +1323,9 @@ function CabShift({ user, shopId }) {
                           </div>
                           {!isOff && (
                             <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-                              <div style={{ width: 108 }}><TimeSelect value={s.in || ""} onChange={(v) => updateShift(member.id, selStr, { in: v })} style={{ fontSize: 14, padding: "6px 2px" }} /></div>
+                              <div style={{ width: 108 }}><TimeSelect value={s.in || ""} onChange={(v) => updateShift(member.id, selStr, { in: v })} style={{ fontSize: 14, padding: "6px 2px", minWidth: 0 }} /></div>
                               <span style={{ color: "#D4789F", fontWeight: 700 }}>〜</span>
-                              <div style={{ width: 108 }}><TimeSelect value={s.out || ""} onChange={(v) => updateShift(member.id, selStr, { out: v })} style={{ fontSize: 14, padding: "6px 2px" }} /></div>
+                              <div style={{ width: 108 }}><TimeSelect value={s.out || ""} onChange={(v) => updateShift(member.id, selStr, { out: v })} style={{ fontSize: 14, padding: "6px 2px", minWidth: 0 }} /></div>
                               {hours && <span style={{ fontSize: 12, color: "#D4789F", fontWeight: 700 }}>{hours}h</span>}
                               <button onClick={() => openDetail(member.id, selStr)} style={{ background: "rgba(255,199,60,0.15)", border: "1px solid rgba(255,199,60,0.3)", borderRadius: 8, padding: "6px 8px", fontSize: 11, color: "#FFC93C", cursor: "pointer", fontWeight: 700, marginLeft: "auto" }}>本{stat.douhan} 姫{stat.shimei}</button>
                             </div>
@@ -1498,18 +1498,30 @@ function CabShift({ user, shopId }) {
                           const hours = calcHours(s.in, s.out);
                           const kind = isOff ? null : shiftKindOf(s.in);
                           return (
-                            <div key={member.id} style={{ display: "flex", alignItems: "center", gap: 8, background: isOff ? "transparent" : kind ? kind.bg : "#FFF5F8", borderRadius: 8, padding: "4px 8px" }}>
+                            <div key={member.id} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: isMobile ? "wrap" : "nowrap", background: isOff ? "transparent" : kind ? kind.bg : "#FFF5F8", borderRadius: 8, padding: "4px 8px" }}>
                               <div style={{ width: 64, fontSize: 12, fontWeight: 700, color: "#5C3344", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{member.name}</div>
                               <button onClick={() => updateShift(member.id, dateStr, { status: isOff ? "work" : "off" })} style={{ border: "none", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", background: isOff ? "#f0f0f0" : kind ? kind.btn : "linear-gradient(135deg, #FF8FAB, #FF6B9D)", color: isOff ? "#bbb" : "#fff" }}>
                                 {isOff ? "休み" : "出勤"}
                               </button>
-                              {!isOff && (
+                              {!isOff && !isMobile && (
                                 <>
                                   <TimeSelect value={s.in || ""} onChange={(v) => updateShift(member.id, dateStr, { in: v })} style={{ width: 84 }} />
                                   <span style={{ fontSize: 11, color: "#D4789F" }}>〜</span>
                                   <TimeSelect value={s.out || ""} onChange={(v) => updateShift(member.id, dateStr, { out: v })} style={{ width: 84 }} />
                                   {hours && <span style={{ fontSize: 10, color: "#D4789F" }}>{hours}h</span>}
                                   {kind && <ShiftBadge kind={kind} />}
+                                </>
+                              )}
+                              {/* スマホ: 1行目に時間数と札、2行目に、出勤・退勤の選ぶ箱を、行の幅いっぱいに半分ずつ(横にはみ出さない) */}
+                              {!isOff && isMobile && (
+                                <>
+                                  {hours && <span style={{ fontSize: 11, color: "#D4789F" }}>{hours}h</span>}
+                                  {kind && <ShiftBadge kind={kind} />}
+                                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexBasis: "100%", minWidth: 0 }}>
+                                    <div style={{ flex: 1, minWidth: 0 }}><TimeSelect value={s.in || ""} onChange={(v) => updateShift(member.id, dateStr, { in: v })} style={{ fontSize: 14, padding: "6px 2px", minWidth: 0 }} /></div>
+                                    <span style={{ fontSize: 11, color: "#D4789F" }}>〜</span>
+                                    <div style={{ flex: 1, minWidth: 0 }}><TimeSelect value={s.out || ""} onChange={(v) => updateShift(member.id, dateStr, { out: v })} style={{ fontSize: 14, padding: "6px 2px", minWidth: 0 }} /></div>
+                                  </div>
                                 </>
                               )}
                             </div>
