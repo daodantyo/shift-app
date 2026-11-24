@@ -9,6 +9,7 @@ import ShopSettings from "./ShopSettings";
 import { AuthScreen, VerifyScreen } from "./Auth";
 import { useShopId, DEFAULT_LIFF_ID } from "./shop";
 import MemoPad from "./MemoPad";
+import TabMenu from "./TabMenu";
 import InterviewTab from "./InterviewTab";
 // 「報酬」タブ(旧・報酬管理)。Excel や PDF の重い部品を含むので、開いたときだけ読み込む
 const CommissionApp = lazy(() => import("./commission/CommissionApp"));
@@ -1117,11 +1118,22 @@ function CabShift({ user, shopId }) {
             ログアウト
           </button>
         </div>
-        <div style={{ display: "flex", flexWrap: "wrap" }}>
-          {[{ id: "shift", label: "シフト" }, { id: "sales", label: "売上" }, { id: "expenses", label: "経費" }, { id: "summary", label: "集計" }, { id: "schedule", label: "予定表" }, { id: "cast", label: "キャスト" }, { id: "interview", label: "面接" }, { id: "commission", label: "報酬" },{ id: "requests", label: `希望シフト${pendingRequests.filter(([, r]) => r.status === "pending").length ? ` (${pendingRequests.filter(([, r]) => r.status === "pending").length})` : ""}` }].map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{ padding: "10px 20px", border: "none", cursor: "pointer", fontWeight: 600, fontSize: 14, borderRadius: "8px 8px 0 0", background: tab === t.id ? "#FFF5F8" : "transparent", color: tab === t.id ? "#5C3344" : "#D4789F" }}>{t.label}</button>
-          ))}
-        </div>
+        <TabMenu
+          compact={isMobile}
+          current={tab}
+          onSelect={setTab}
+          tabs={[
+            { id: "shift", label: "シフト" },
+            { id: "sales", label: "売上" },
+            { id: "expenses", label: "経費" },
+            { id: "summary", label: "集計" },
+            { id: "schedule", label: "予定表" },
+            { id: "cast", label: "キャスト" },
+            { id: "interview", label: "面接" },
+            { id: "commission", label: "報酬" },
+            { id: "requests", label: "希望シフト", badge: pendingRequests.filter(([, r]) => r.status === "pending").length },
+          ]}
+        />
       </div>
 
       <div style={{ padding: "20px 16px", maxWidth: 1000, margin: "0 auto" }}>
