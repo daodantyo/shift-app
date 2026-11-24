@@ -50,13 +50,13 @@ function CompactMenu({ tabs, current, onSelect }) {
   const pick = (id) => { setOpen(false); onSelect(id); };
 
   return (
-    <div style={{ paddingBottom: 14 }}>
+    <div style={{ paddingBottom: 14, minWidth: 0, maxWidth: "100%" }}>
       <button
         type="button"
         aria-expanded={open}
         aria-controls={MENU_ID}
         onClick={() => setOpen((o) => !o)}
-        style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", minHeight: 48, padding: "0 14px", boxSizing: "border-box", border: "none", borderRadius: 12, background: "#FFF5F8", cursor: "pointer", fontFamily: "inherit", fontSize: 15, fontWeight: 700, color: "#5C3344", textAlign: "left" }}
+        style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", minHeight: 48, padding: "0 14px", boxSizing: "border-box", border: "none", borderRadius: 12, background: "#FFF5F8", cursor: "pointer", fontFamily: "inherit", fontSize: 15, fontWeight: 700, color: "#5C3344", textAlign: "left", overflow: "hidden", maxWidth: "100%" }}
       >
         <span style={{ color: "#D4789F", flexShrink: 0 }}>☰ メニュー</span>
         {pending > 0 && <Badge n={pending} />}

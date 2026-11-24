@@ -734,10 +734,22 @@ function CabShift({ user, shopId }) {
       meta.setAttribute("name", "viewport");
       document.head.appendChild(meta);
     }
-    meta.setAttribute("content", "width=device-width, initial-scale=1, viewport-fit=cover");
+    // minimum-scale=1: ブラウザが、ページを縮めて(画面の右に白い空きができる)表示しないようにする
+    meta.setAttribute("content", "width=device-width, initial-scale=1, minimum-scale=1, viewport-fit=cover");
     const onResize = () => setIsMobile(window.innerWidth < 700);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
+  }, []);
+  useEffect(() => {
+    // 管理画面を開いている間は、ページの背景を暗くする(ページが縮んだり、はみ出したりしても、白い空きが出ない)
+    const prevBody = document.body.style.background;
+    const prevHtml = document.documentElement.style.background;
+    document.body.style.background = "#0a0a0c";
+    document.documentElement.style.background = "#0a0a0c";
+    return () => {
+      document.body.style.background = prevBody;
+      document.documentElement.style.background = prevHtml;
+    };
   }, []);
   const [salesView, setSalesView] = useState("week");
   const [rankKey, setRankKey] = useState("shimei");
