@@ -95,7 +95,7 @@ export default function SummaryPage({ data, deals, api }) {
       <div className="card">
         <h2>女性別（{label}）</h2>
         {rowList.length === 0 ? <div className="empty">この期間の登録はありません</div> : (
-          <div className="table-wrap">
+          <div className="table-wrap sum-wrap">
             <table>
               <thead><tr><th>女性</th><th className="num">件数</th><th className="num">売上</th><th className="num">報酬総額（計）</th><th className="num">雑費</th><th className="num">手取り額</th><th className="num">未払</th><th></th></tr></thead>
               <tbody>
@@ -139,24 +139,19 @@ function MemberRow({ r, name, member, label, open, onToggle, onPayAll, onPurge, 
               <button className="btn small" onClick={onPdf}>この人だけのPDFを保存</button>
             </div>
             <div className="table-wrap"><WomanSheet member={member} deals={detail} dateLabel={label} /></div>
-            <table style={{ marginTop: 8 }}>
-              <tbody>
-                {detail.map((d) => {
-                  return (
-                    <tr key={d.id}>
-                      <td>{d.date.slice(5).replace("-", "/")}</td>
-                      <td className="muted">{[dealCourse(d), d.client].filter(Boolean).join(" ・")}</td>
-                      <td className="num">手取り <b>{yen(dealNet(d))}</b></td>
-                      <td>
-                        <button className={"badge " + (d.paid ? "paid" : "unpaid")} style={{ border: 0, cursor: "pointer" }} onClick={() => api.setPaid([d.id], !d.paid)}>
-                          {d.paid ? "支払済" : "未払"}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div className="sum-detail">
+              {detail.map((d) => (
+                <div key={d.id} className="sum-detail-row">
+                  <b>{d.date.slice(5).replace("-", "/")}</b>
+                  <span className="muted">{[dealCourse(d), d.client].filter(Boolean).join(" ・")}</span>
+                  <span>手取り <b>{yen(dealNet(d))}</b></span>
+                  <button className={"badge " + (d.paid ? "paid" : "unpaid")} style={{ border: 0, cursor: "pointer" }} onClick={() => api.setPaid([d.id], !d.paid)}>
+                    {d.paid ? "支払済" : "未払"}
+                  </button>
+                  <button className="btn small" onClick={() => api.openEdit(d.id)}>編集</button>
+                </div>
+              ))}
+            </div>
           </td>
         </tr>
       )}

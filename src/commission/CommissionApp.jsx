@@ -14,6 +14,7 @@ import "./commission.css";
 
 export default function CommissionApp({ base, user }) {
   const [tab, setTab] = useState("deals");
+  const [editReq, setEditReq] = useState(null); // 「集計」の「編集」を押した登録のID（「登録」タブを開いて、その登録を直せる状態にする）
   const [data, setData] = useState(null); // { members, deals, settings, meta }
   const [loadError, setLoadError] = useState("");
   const [toast, setToast] = useState("");
@@ -44,8 +45,13 @@ export default function CommissionApp({ base, user }) {
       .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : (a.createdAt || 0) < (b.createdAt || 0) ? 1 : -1));
   }, [data]);
 
+  // タブを切り替える（「編集」の依頼は、タブを自分で切り替えたら、取り消す）
+  const go = (t) => { setEditReq(null); setTab(t); };
+
   // ---- 保存系 ----
   const api = {
+    // 「集計」から、登録を直す：「登録」タブを開いて、その登録の中身を入力欄に入れる
+    openEdit: (id) => { setEditReq(id); setTab("deals"); },
     addDeal: async (d) => { await push(ref(db, `${base}/deals`), { ...d, createdAt: Date.now() }); showToast("登録しました"); },
     updateDeal: async (id, d) => { await update(ref(db, `${base}/deals/${id}`), d); showToast("更新しました"); },
     deleteDeal: async (id) => { await remove(ref(db, `${base}/deals/${id}`)); showToast("削除しました"); },
@@ -90,10 +96,10 @@ export default function CommissionApp({ base, user }) {
           </div>
         </header>
         <nav className="tabs no-print">
-          <button className={tab === "deals" ? "active" : ""} onClick={() => setTab("deals")}>登録</button>
-          <button className={tab === "summary" ? "active" : ""} onClick={() => setTab("summary")}>集計</button>
-          <button className={tab === "scout" ? "active" : ""} onClick={() => setTab("scout")}>スカウトバック</button>
-          <button className={tab === "settings" ? "active" : ""} onClick={() => setTab("settings")}>設定</button>
+          <button className={tab === "deals" ? "active" : ""} onClick={() => go("deals")}>登録</button>
+          <button className={tab === "summary" ? "active" : ""} onClick={() => go("summary")}>集計</button>
+          <button className={tab === "scout" ? "active" : ""} onClick={() => go("scout")}>スカウトバック</button>
+          <button className={tab === "settings" ? "active" : ""} onClick={() => go("settings")}>設定</button>
         </nav>
         {isLineBrowser() && (
           <div className="banner no-print">
@@ -112,7 +118,7 @@ export default function CommissionApp({ base, user }) {
         ) : !data ? (
           <div className="empty">読み込み中...</div>
         ) : tab === "deals" ? (
-          <DealsPage data={data} deals={dealList} api={api} goSettings={() => setTab("settings")} />
+          <DealsPage data={data} deals={dealList} api={api} goSettings={() => go("settings")} editRequest={editReq} />
         ) : tab === "summary" ? (
           <SummaryPage data={data} deals={dealList} api={api} />
         ) : tab === "scout" ? (

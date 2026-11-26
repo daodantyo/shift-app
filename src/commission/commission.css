@@ -199,3 +199,33 @@
   .cm-root .member-list td { display: block; width: auto !important; border-bottom: 0; padding: 4px 6px; }
   .cm-root .member-list td .row { justify-content: flex-start !important; }
 }
+
+/* 登録の直し：スマホでは、登録一覧を、1件ずつのカードにする（表は、横に長く、「編集」が右のはしで、見つけにくかった） */
+.cm-root .deal-cards { display: none; }
+.cm-root .deal-card { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: #fff; }
+.cm-root .deal-card-top { display: flex; align-items: center; gap: 8px; }
+.cm-root .deal-card-date { font-size: 15px; color: var(--navy); font-variant-numeric: tabular-nums; }
+.cm-root .deal-card-name { flex: 1; min-width: 0; font-weight: 700; overflow-wrap: anywhere; }
+.cm-root .deal-card-sub { margin-top: 2px; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.cm-root .deal-card-nums { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+.cm-root .deal-card-nums > div { background: #f3f5f9; border-radius: 8px; padding: 6px 4px; text-align: center; display: flex; flex-direction: column; gap: 2px; }
+.cm-root .deal-card-nums span { font-size: 11px; color: var(--muted); }
+.cm-root .deal-card-nums b { font-size: 14px; color: var(--navy); font-variant-numeric: tabular-nums; }
+.cm-root .deal-card-nums b.net { color: #1e6b3f; }
+.cm-root .deal-card-det { margin-top: 8px; font-size: 13px; display: flex; flex-direction: column; gap: 3px; }
+.cm-root .deal-card-det > div { overflow-wrap: anywhere; }
+.cm-root .deal-card-det span { display: inline-block; min-width: 66px; color: var(--muted); font-size: 12px; }
+.cm-root .deal-card-note { margin-top: 6px; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.cm-root .deal-card-act { display: flex; gap: 8px; margin-top: 10px; }
+.cm-root .deal-card-act .btn { flex: 1 1 0; min-height: 42px; font-weight: 600; }
+@media (max-width: 560px) {
+  .cm-root .deal-cards { display: flex; flex-direction: column; gap: 10px; }
+  .cm-root .deal-table { display: none; }
+}
+
+/* 集計：女性を開いたときの、日ごとの行（「編集」「支払」のボタンが、右のはしに隠れないように、左から並べて、はみ出したら折り返す） */
+.cm-root .sum-wrap { container-type: inline-size; }
+.cm-root .sum-detail { margin-top: 8px; white-space: normal; position: sticky; left: 0; width: 100%; width: calc(100cqw - 20px); }
+.cm-root .sum-detail-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.cm-root .sum-detail-row .muted { overflow-wrap: anywhere; }
+.cm-root .sum-detail-row .btn.small { min-height: 34px; padding: 5px 14px; }

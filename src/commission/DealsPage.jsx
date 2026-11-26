@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { autoSales, dealCourse, dealNet, dealSales, dealTake, monthKey, num, todayStr, yen } from "./calc";
 import HoursInput from "./HoursInput";
 
@@ -43,6 +43,64 @@ const payloadOf = (b, date, memberId) => {
     memo: (b.memo || "").trim(),
   };
 };
+
+const str = (v) => (v === undefined || v === null ? "" : String(v));
+
+// 保存してある登録 → 入力欄に入れる中身
+const formFromDeal = (d) => {
+  // 古い登録（コース欄がなく売上だけのもの）はコース料金に売上を入れて編集できるようにする
+  const legacy = d.coursePrice === undefined && d.nomination === undefined && d.option === undefined && d.extension === undefined;
+  return {
+    date: d.date, memberId: d.memberId, shop: d.shop || "", hours: d.hours || "",
+    course: dealCourse(d), coursePrice: legacy ? str(d.amount) : str(d.coursePrice),
+    sales: str(d.amount), salesTouched: !legacy && d.amount !== undefined && d.amount !== null && num(d.amount) !== autoSales(d),
+    courseBack: str(d.courseBack), nomination: str(d.nomination), option: str(d.option), opBack: str(d.opBack), extension: str(d.extension), expense: str(d.expense), optionName: d.optionName || "",
+    client: d.client || "", memo: d.memo || "",
+  };
+};
+
+const shortDate = (date) => String(date || "").slice(5).replace("-", "/");
+
+// スマホ用：登録1件ぶんのカード（日付・女性・金額と、「編集」「削除」のボタンが、横に動かさなくても見える）
+function DealCard({ d, name, onEdit, onDelete, onPaid }) {
+  const opt = d.optionName || (num(d.option) ? yen(d.option) : "");
+  const rows = [
+    ["コース", [dealCourse(d), num(d.coursePrice) ? yen(d.coursePrice) : "", num(d.courseBack) ? `（バック ${yen(d.courseBack)}）` : ""].filter(Boolean).join(" ")],
+    ["指名料", num(d.nomination) ? yen(d.nomination) : ""],
+    ["オプション", [opt, num(d.opBack) ? `（バック ${yen(d.opBack)}）` : ""].filter(Boolean).join(" ")],
+    ["延長", num(d.extension) ? yen(d.extension) : ""],
+    ["雑費", num(d.expense) ? yen(d.expense) : ""],
+  ].filter((r) => r[1]);
+  const sub = [d.shop, d.hours ? `勤務 ${d.hours}` : ""].filter(Boolean).join(" ・");
+  const note = [d.client, d.memo].filter(Boolean).join(" ・");
+  return (
+    <div className="deal-card">
+      <div className="deal-card-top">
+        <b className="deal-card-date">{shortDate(d.date)}</b>
+        <span className="deal-card-name">{name}</span>
+        <button type="button" className={"badge " + (d.paid ? "paid" : "unpaid")} style={{ border: 0, cursor: "pointer" }} onClick={onPaid} title="クリックで切り替え">
+          {d.paid ? "支払済" : "未払"}
+        </button>
+      </div>
+      {sub && <div className="deal-card-sub">{sub}</div>}
+      <div className="deal-card-nums">
+        <div><span>売上</span><b>{yen(dealSales(d))}</b></div>
+        <div><span>計</span><b>{yen(dealTake(d))}</b></div>
+        <div><span>手取り</span><b className="net">{yen(dealNet(d))}</b></div>
+      </div>
+      {rows.length > 0 && (
+        <div className="deal-card-det">
+          {rows.map(([k, v]) => <div key={k}><span>{k}</span>{v}</div>)}
+        </div>
+      )}
+      {note && <div className="deal-card-note">{note}</div>}
+      <div className="deal-card-act">
+        <button type="button" className="btn" onClick={onEdit}>編集</button>
+        <button type="button" className="btn danger" onClick={onDelete}>削除</button>
+      </div>
+    </div>
+  );
+}
 
 // 店舗1つぶんの入力の部品。first=1つ目の店舗（店舗・勤務時間は、女性を選ぶと自動で入るので、「直す」を押したときだけ入力欄を出す）
 function ShopBlock({ b, patch, first, memberId, title, onRemove, findPreset }) {
@@ -153,18 +211,24 @@ function ShopBlock({ b, patch, first, memberId, title, onRemove, findPreset }) {
   );
 }
 
-export default function DealsPage({ data, deals, api, goSettings }) {
+export default function DealsPage({ data, deals, api, goSettings, editRequest }) {
   const members = data.members;
   const courses = Object.values((data.settings || {}).courses || {}).filter((c) => c && c.min !== "" && c.min !== undefined);
   const memberIds = Object.keys(members).filter((id) => members[id].active !== false);
 
   const withDefaults = (f, memberId) => ({ ...f, memberId, shop: members[memberId]?.shop || "", hours: members[memberId]?.hours || "" });
-  const [form, setForm] = useState(() => withDefaults({ ...EMPTY }, memberIds[0] || "")); // 日付・女性・1つ目の店舗
+  const startDeal = editRequest ? deals.find((d) => d.id === editRequest) || null : null; // 「集計」の「編集」から来たときの、直す登録
+  const [form, setForm] = useState(() => (startDeal ? formFromDeal(startDeal) : withDefaults({ ...EMPTY }, memberIds[0] || ""))); // 日付・女性・1つ目の店舗
   const [extras, setExtras] = useState([]); // 2つ目以降の店舗（新しく登録するときだけ）
   const [resetKey, setResetKey] = useState(0); // 入力を全部やり直すとき、店舗の部品を作り直す印
   const [formErr, setFormErr] = useState("");
   const shopList = [...new Set([...Object.values(members).map((m) => m.shop), ...deals.map((d) => d.shop)].filter(Boolean))];
-  const [editId, setEditId] = useState(null);
+  const [editId, setEditId] = useState(startDeal ? startDeal.id : null);
+  const openedByRequest = useRef(!!startDeal);
+  // 「集計」から来たときは、入力欄が見えるように、画面のいちばん上へ
+  useEffect(() => {
+    if (openedByRequest.current) window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
   const [filterMonth, setFilterMonth] = useState(monthKey(todayStr()));
   const [filterMember, setFilterMember] = useState("");
   const [saving, setSaving] = useState(false);
@@ -243,16 +307,7 @@ export default function DealsPage({ data, deals, api, goSettings }) {
     setExtras([]);
     setFormErr("");
     setResetKey((k) => k + 1);
-    const s = (v) => (v === undefined || v === null ? "" : String(v));
-    // 古い登録（コース欄がなく売上だけのもの）はコース料金に売上を入れて編集できるようにする
-    const legacy = d.coursePrice === undefined && d.nomination === undefined && d.option === undefined && d.extension === undefined;
-    setForm({
-      date: d.date, memberId: d.memberId, shop: d.shop || "", hours: d.hours || "",
-      course: dealCourse(d), coursePrice: legacy ? s(d.amount) : s(d.coursePrice),
-      sales: s(d.amount), salesTouched: !legacy && d.amount !== undefined && d.amount !== null && num(d.amount) !== autoSales(d),
-      courseBack: s(d.courseBack), nomination: s(d.nomination), option: s(d.option), opBack: s(d.opBack), extension: s(d.extension), expense: s(d.expense), optionName: d.optionName || "",
-      client: d.client || "", memo: d.memo || "",
-    });
+    setForm(formFromDeal(d));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -263,6 +318,12 @@ export default function DealsPage({ data, deals, api, goSettings }) {
     setResetKey((k) => k + 1);
     setForm(withDefaults({ ...EMPTY }, memberIds[0] || ""));
   };
+
+  const removeDeal = (d) => { if (window.confirm("この登録を削除しますか？")) api.deleteDeal(d.id); };
+  const nameOf = (id) => members[id]?.name || "（削除済）";
+
+  // 女性の選ぶ欄：非表示の女性の登録を直すときも、その女性の名前が出るようにする
+  const pickIds = form.memberId && !memberIds.includes(form.memberId) && members[form.memberId] ? [...memberIds, form.memberId] : memberIds;
 
   const months = useMemo(() => {
     const s = new Set(deals.map((d) => monthKey(d.date)));
@@ -292,7 +353,7 @@ export default function DealsPage({ data, deals, api, goSettings }) {
           <div className="field"><label>女性</label>
             <select value={form.memberId} onChange={setMember} required>
               <option value="">選択</option>
-              {memberIds.map((id) => <option key={id} value={id}>{members[id].name}</option>)}
+              {pickIds.map((id) => <option key={id} value={id}>{members[id].name}{members[id].active === false ? "（非表示）" : ""}</option>)}
             </select></div>
         </div>
         <datalist id="deal-shop-list">{shopList.map((s) => <option key={s} value={s} />)}</datalist>
@@ -344,8 +405,13 @@ export default function DealsPage({ data, deals, api, goSettings }) {
           </select>
           <span className="muted">{shown.length}件 / 売上 {yen(shownSales)} / 計 {yen(shownTake)} / 手取り {yen(shownNet)}</span>
         </div>
-        {shown.length === 0 ? <div className="empty">登録がありません</div> : (
-          <div className="table-wrap">
+        {shown.length === 0 ? <div className="empty">登録がありません</div> : (<>
+          <div className="deal-cards">
+            {shown.map((d) => (
+              <DealCard key={d.id} d={d} name={nameOf(d.memberId)} onEdit={() => startEdit(d)} onDelete={() => removeDeal(d)} onPaid={() => api.setPaid([d.id], !d.paid)} />
+            ))}
+          </div>
+          <div className="table-wrap deal-table">
             <table>
               <thead><tr>
                 <th>日付</th><th>女性</th><th>店舗</th><th>勤務時間</th>
@@ -356,8 +422,8 @@ export default function DealsPage({ data, deals, api, goSettings }) {
                 {shown.map((d) => {
                   return (
                     <tr key={d.id}>
-                      <td>{d.date.slice(5).replace("-", "/")}</td>
-                      <td>{members[d.memberId]?.name || "（削除済）"}</td>
+                      <td>{shortDate(d.date)}</td>
+                      <td>{nameOf(d.memberId)}</td>
                       <td>{d.shop}</td>
                       <td>{d.hours}</td>
                       <td className="num"><b>{yen(dealSales(d))}</b></td>
@@ -381,7 +447,7 @@ export default function DealsPage({ data, deals, api, goSettings }) {
                       <td>
                         <div className="row" style={{ flexWrap: "nowrap" }}>
                           <button className="btn small" onClick={() => startEdit(d)}>編集</button>
-                          <button className="btn small danger" onClick={() => { if (window.confirm("この登録を削除しますか？")) api.deleteDeal(d.id); }}>削除</button>
+                          <button className="btn small danger" onClick={() => removeDeal(d)}>削除</button>
                         </div>
                       </td>
                     </tr>
@@ -390,7 +456,7 @@ export default function DealsPage({ data, deals, api, goSettings }) {
               </tbody>
             </table>
           </div>
-        )}
+        </>)}
       </div>
     </div>
   );
