@@ -56,12 +56,29 @@ export async function primaryCalendarName(token) {
   return (j && (j.id || j.summary)) || "";
 }
 
+// 許可の画面が、開いているあいだ、ボタンの下に出す案内
+// (Google の「このアプリは Google で確認されていません」の画面では、大きい青いボタンが「安全なページに戻る」＝やめる、になっていて、
+//  進むための「続行」は、左の小さい文字。迷って、押せなくなる人が、いるため、先に書いておく)
+export const GOOGLE_WAIT_TEXT = "Google の画面が開きました。「このアプリは Google で確認されていません」と出たときは、左の小さい「続行」を押してください（大きい青い「安全なページに戻る」は、やめる、という意味です）。そのあと、アカウントを選んで、許可の項目にチェックを入れて、「続行」を押します。";
+
+// ボタンの下の、いつもの説明に足す一言
+export const GOOGLE_WARN_HELP = "「このアプリは Google で確認されていません」と出たときは、左の小さい「続行」を押してください。";
+
+// 予定を入れられなかったときの、理由の文(f は、pushPlansToGoogle の failed の1つ)
+export function pushFailText(f) {
+  if (!f) return "不明";
+  if (f.reason === "accessNotConfigured") return "Google カレンダー API が、オンになっていません（管理者に伝えてください）";
+  if (f.reason === "insufficientPermissions" || f.reason === "forbidden") return "許可の画面で、カレンダーの項目に、チェックが入っていませんでした。もう一度ボタンを押して、チェックを入れてください";
+  if (f.status === 401) return "許可が、うまく受け取れませんでした。もう一度ボタンを押してください";
+  return f.detail || f.reason || `番号 ${f.status}`;
+}
+
 // 許可の画面で起きたことを、やさしい日本語にする
 export function googleErrorText(e) {
   const code = (e && e.code) || (e && e.message) || "";
-  if (code === "popup_closed") return "許可の画面が、閉じられました。もう一度、押してください。";
+  if (code === "popup_closed") return `許可の画面が、閉じられました。もう一度、ボタンを押してください。${GOOGLE_WARN_HELP}（大きい青い「安全なページに戻る」を押すと、やめたことになります）`;
   if (code === "popup_failed_to_open") return "許可の画面を開けませんでした。ブラウザのポップアップのブロックを、許可してください。";
-  if (code === "access_denied") return "許可されませんでした。予定を入れるには、許可が要ります。";
+  if (code === "access_denied") return `許可されませんでした。予定を入れるには、許可が要ります。もう一度、ボタンを押してください。${GOOGLE_WARN_HELP}`;
   if (code === "gsi_load") return "Google の部品を読み込めませんでした。通信を確かめて、もう一度押してください。";
   if (code === "invalid_client" || code === "init_failed") return "Google の設定に、問題があります。管理者に伝えてください。";
   return `Google の許可で、うまくいきませんでした。（${code || "不明"}）`;

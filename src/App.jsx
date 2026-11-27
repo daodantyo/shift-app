@@ -17,7 +17,7 @@ import { addMemoPlans } from "./memo";
 import { castRemovalPlan, removeCastConfirm } from "./cast-remove";
 import { gcalUrl, monthIcs, icsFileName, monthPlans, pushPlansToGoogle } from "./gcal";
 import { GOOGLE_CLIENT_ID } from "./gcal-config";
-import { preloadGsi, requestGoogleToken, primaryCalendarName, googleErrorText } from "./gcal-google";
+import { preloadGsi, requestGoogleToken, primaryCalendarName, googleErrorText, pushFailText, GOOGLE_WAIT_TEXT, GOOGLE_WARN_HELP } from "./gcal-google";
 
 const DAYS = ["月", "火", "水", "木", "金", "土", "日"];
 const INITIAL_CAST = [
@@ -527,7 +527,7 @@ function CabShift({ user, shopId }) {
     if (/\bLine\//i.test(navigator.userAgent)) { setGcalNote({ ok: false, text: "LINEの中のブラウザでは、Google のログインができません。Safari や Chrome で、開き直してください。" }); return; }
     if (!GOOGLE_CLIENT_ID) { setGcalNote({ ok: false, text: "Google の設定が、まだです。下の「ファイルで保存」を使ってください。" }); return; }
     setGcalBusy(true);
-    setGcalNote({ ok: true, text: "Google の許可の画面を開いています…" });
+    setGcalNote({ ok: true, text: GOOGLE_WAIT_TEXT });
     try {
       const token = await requestGoogleToken(); // ボタンを押した直後に、許可の画面を開く(ここまでは、待たない)
       const who = await primaryCalendarName(token).catch(() => "");
@@ -539,7 +539,7 @@ function CabShift({ user, shopId }) {
         setGcalNote({ ok: true, text: `${done}件を、Google カレンダーに入れました${where}。新しく ${r.created}件・上書き ${r.updated}件。` });
       } else {
         const f = r.failed[0];
-        const why = f.reason === "accessNotConfigured" ? "Google カレンダー API が、オンになっていません" : f.status === 401 ? "許可が、うまく受け取れませんでした" : (f.detail || f.reason || `番号 ${f.status}`);
+        const why = pushFailText(f);
         setGcalNote({ ok: false, text: `${done}件を入れました${where}。入れられなかった予定が ${r.failed.length + r.skipped}件あります。（理由: ${why}）` });
       }
     } catch (e) {
@@ -2118,7 +2118,7 @@ function CabShift({ user, shopId }) {
                 📅 この月の予定を、Google カレンダーに入れる
               </button>
               <div style={{ fontSize: 11, color: "#888", marginTop: 4, lineHeight: 1.6 }}>
-                押すと、Google の許可の画面が出ます(アカウントを選びます)。予定を直して、もう一度押すと、同じ予定が上書きされます。予定表で消した予定は、Google カレンダーに残ります。
+                押すと、Google の許可の画面が出ます(アカウントを選びます)。{GOOGLE_WARN_HELP}予定を直して、もう一度押すと、同じ予定が上書きされます。予定表で消した予定は、Google カレンダーに残ります。
               </div>
               {gcalNote && (
                 <div style={{ marginTop: 6, padding: "8px 10px", borderRadius: 8, fontSize: 12, lineHeight: 1.6, fontWeight: 600, background: gcalNote.ok ? "#EAF3FF" : "#FFF0F0", color: gcalNote.ok ? "#1a56c4" : "#C0392B" }}>{gcalNote.text}</div>
